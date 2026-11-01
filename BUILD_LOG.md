@@ -88,6 +88,29 @@ NEAR Hackathon "Build Beyond Boundaries" · Unstoppable DeFi track · Nov 1–14
 
 ### Next (following runs)
 1. RHEA quote endpoint still HTTP 500 (server-side) — retry periodically; RHEA-first path activates automatically on recovery.
-2. Contract build (near-sdk-js → wasm) + deploy to NEAR testnet (Phase C).
+2. ~~Contract build (near-sdk-js → wasm) + deploy to NEAR testnet (Phase C)~~ — DONE 2026-11-01 ~15:45 IST (see below); deploy blocked on his one testnet-wallet step.
 3. Spending-limit on-chain enforcement demo + failure-recovery console.
 4. Demo video + submission (public repo + his X demo post + form). He posts the X demo (X automation banned); need his NEAR payout address at submission.
+
+## 2026-11-01 ~15:45 IST — Phase C: contract build + testnet deploy prep
+
+### Contract build — DONE, wasm verified
+- `contracts/vault/build/contract.wasm` built via near-sdk-js 2.0.0 → **533,780 bytes, valid WebAssembly MVP module**. Reproducible: `npm run build` (deletes + rebuilds clean).
+- Toolchain fixes (this VM): near-sdk-js postinstall's QJSC/wasi-sdk/binaryen downloads failed on `tar` ownership warnings (root sandbox) — completed manually into `node_modules/near-sdk-js/lib/cli/deps/` (qjsc 0.1.3, wasi-sdk 11.0, binaryen 0.1.16). npm-workspace hoisting broke the CLI's cwd-relative `node_modules/.bin/tsc` and `node_modules/near-sdk-js` lookups — fixed via `scripts/build.sh` wrapper that symlinks them before building.
+- Quirk for fresh clones: if `npm run build` fails on tsc/qjsc resolution, the build.sh symlinks cover it; if the postinstall toolchain download fails on tar ownership, re-run the manual steps (documented in DEPLOY.md).
+
+### Deploy tooling — READY, one command
+- `contracts/vault/scripts/deploy-testnet.mjs` — TESTNET ONLY. `--dry-run` prints the plan (default); `--deploy` creates subaccount `vaultguard.<deployer>.testnet`, deploys the wasm, calls `init` (guardian = deployer, per-tx cap 1000 USDC → 1000000000 base units, allowed assets from `apps/guardian/config/policy.json`: Base USDC + NEAR USDC), then verifies via `get_status` view call. Deployer key ONLY via env (`NEAR_DEPLOYER_ACCOUNT`, `NEAR_DEPLOYER_KEY`); `.env` gitignored.
+- `contracts/vault/.env.example` + `contracts/vault/DEPLOY.md` document the setup.
+- Dry-run verified: prints correct plan + init args, touches nothing. `--deploy` without env exits 2 with a clear message before any network call.
+
+### Testnet account — MISSING, his step (not asked yet)
+- Searched workspace + env: no `~/.near-credentials`, no `.env`, no ed25519 keys anywhere. No wallet created (per constraints: no phone/OTP/seed-phrase flows by me).
+- **His one step** (documented in DEPLOY.md, not yet asked): create a free testnet wallet at https://wallet.testnet.near.org, export the private key, hand it over via Secure Vault. Then `npm run deploy:testnet` is one command.
+
+### Verified
+- `tsc --noEmit` clean: guardian, web, contract.
+- wasm rebuilds reproducibly; deploy dry-run correct; missing-env path fails safe.
+
+### Git
+- Phase C committed. **Not pushed** (repo goes public at submission time).

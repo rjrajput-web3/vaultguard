@@ -4,12 +4,17 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "./scripts/build.sh",
+    "deploy:dry": "node scripts/deploy-testnet.mjs --dry-run",
+    "deploy:testnet": "node scripts/deploy-testnet.mjs --deploy"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "near-sdk-js": "^2.0.0"
+  },
+  "devDependencies": {
+    "near-api-js": "^5.1.1"
   }
 }
