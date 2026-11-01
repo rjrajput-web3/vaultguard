@@ -10,10 +10,9 @@
  * NEVER blind swaps: every hedge goes through the risk engine first.
  * If any check fails → pause + alert instead of swapping.
  */
-import { analyzeQuote, type RiskReport } from "./risk-engine";
+import { scoreRisk, type NormalizedQuote, type RiskReport } from "./risk-engine";
 import { evaluatePolicy, toHuman, type VaultPolicy } from "./policy";
 import { checkPeg, trackDepeg, type DepegState } from "./oracle-monitor";
-import type { Quote } from "@rhea-finance/cross-chain-aggregation-dex";
 
 export type DepegDecisionKind = "no-action" | "auto-hedge" | "pause-and-alert";
 
@@ -29,14 +28,15 @@ export interface DepegDecision {
  *
  * @param depeggedAsset e.g. "USDe" / "near:<token>"
  * @param spotPrice current oracle price of the depegged asset
- * @param hedgeQuote live RHEA quote converting the vault position → USDC (via NEAR Intents preferred)
+ * @param hedgeQuote normalized live quote (RHEA or 1Click fallback) converting
+ *   the vault position → USDC — produced by the quote loop, already normalized
  * @param policy the vault's user-defined policy
  */
 export function evaluateDepegResponse(input: {
   depeggedAsset: string;
   spotPrice: number;
   depegState: DepegState;
-  hedgeQuote: Quote; // position -> USDC
+  hedgeQuote: NormalizedQuote; // position -> USDC, from either quote source
   policy: VaultPolicy;
   spentTodayHuman: number;
   decimalsIn: number;
@@ -69,7 +69,10 @@ export function evaluateDepegResponse(input: {
   ];
 
   // Step 2: risk / slippage / fees / exit-cost calc.
-  const { normalized, report } = analyzeQuote(input.hedgeQuote, {
+  // The hedge quote arrives pre-normalized from the quote loop (RHEA or
+  // 1Click) — score it directly. Same math as analyzeQuote's second half.
+  const normalized = input.hedgeQuote;
+  const report = scoreRisk(normalized, {
     peggedPair: false, // depegged asset: no peg assumption
     decimalsIn: input.decimalsIn,
     decimalsOut: input.decimalsOut,

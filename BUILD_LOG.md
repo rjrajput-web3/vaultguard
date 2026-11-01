@@ -34,6 +34,32 @@ NEAR Hackathon "Build Beyond Boundaries" · Unstoppable DeFi track · Nov 1–14
 ### Git
 - Repo initialized at ~/workspace/vaultguard/, first commit made. **Not pushed anywhere** (repo goes public at submission time).
 
+## 2026-11-01 ~14:50 IST — Phase A: live quote loop (RHEA-first + 1Click fallback)
+
+### Quote backend status (verified live)
+- RHEA JWT connected via custom.rhea vault (auth validated: bad token → 401, real JWT → past auth). BUT `POST /api/v2/swap/quote` returns **HTTP 500 on every request** (verified with the docs verbatim example, ~14:00–14:50 IST). Token-list endpoints work. Server-side; not our key or request shape.
+- 1Click dry quotes **LIVE and verified**: `POST https://1click.chaindefuser.com/v0/quote` with `dry:true` needs NO auth (docs claim JWT required, but dry quotes return 201 without it). Gotcha found: `recipient` must be a valid account on the DESTINATION chain (Solana addr for Solana, NEAR account for NEAR); `refundTo` must suit the origin chain. Demo pair live: 1.0 Base USDC → 0.999798 NEAR USDC (slippage ~0.5%).
+
+### Built
+- `apps/guardian/src/oneclick-client.ts` — 1Click client: `fetchOneClickTokens()` (public, 10-min cache), `resolveOneClickAsset(symbol, blockchain)` (no hardcoded assetIds), `fetchOneClickQuote()` (dry:true, AbortController timeout). Verified shapes against live responses.
+- `apps/guardian/src/quote-loop.ts` — the loop:
+  - `fetchRheaQuote()` — RHEA primary via SwapClient (JWT from `RHEA_API_JWT` env only); token resolution fixed: `getCrossChainToTokens` takes the DESTINATION registry id (near → 900001), not the source chain.
+  - `normalizeOneClickQuote()` — 1Click → NormalizedQuote (router "nearintents", alternatives []).
+  - `runQuoteIteration()` — RHEA first with timeout; any failure → 1Click fallback; never throws (unhealthy ticks reported).
+  - `pollQuoteLoop()` — interval daemon, survives individual failures.
+- `apps/guardian/src/depeg-flow.ts` — `evaluateDepegResponse` now takes `hedgeQuote: NormalizedQuote` (was SDK `Quote`); `scoreRisk` replaces `analyzeQuote`'s second half. Behavior identical; all three outcomes re-verified (no-action / auto-hedge / pause-and-alert).
+- `apps/guardian/scripts/quote-loop.ts` — CLI: one iteration → JSON risk report; `--daemon --interval-ms N` for continuous polling.
+- `apps/guardian/src/index.ts` — `once` (default) and daemon modes.
+
+### Verified
+- `tsc --noEmit` clean.
+- Live smoke (no JWT): RHEA skipped cleanly → 1Click live quote → normalized → risk **15.7 SAFE** (slippage 0.5%, fee ~0.02%).
+- Live smoke (real JWT via vault surrogate): RHEA attempted → token resolution OK → HTTP 500 → fallback → 1Click → same SAFE report. Priority chain confirmed; RHEA path activates automatically when their backend recovers.
+- Depeg flow: no-depeg → no-action; confirmed depeg + safe quote → auto-hedge (nearintents); paused vault → pause-and-alert.
+
+### Git
+- Phase A committed. **Not pushed** (repo goes public at submission time).
+
 ### Next (following runs)
 1. Get JWT → run dry-run quote → confirm API live.
 2. Live oracle monitor loop (Pyth USDC feed id) + policy editor UI wiring.
