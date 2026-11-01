@@ -16,6 +16,7 @@
  *   or failing, the loop falls back to 1Click automatically.
  */
 import { runQuoteIteration, pollQuoteLoop, type QuoteLoopParams } from "../src/quote-loop";
+import { loadPolicy } from "../src/policy-config";
 
 const PARAMS: QuoteLoopParams = {
   fromChain: "8453", // Base (RHEA chain id)
@@ -30,6 +31,8 @@ const PARAMS: QuoteLoopParams = {
   dryRecipient: "intents.near",
   dryRefundTo: "0x53CFA0C9EB10E352fC5B4DaAC1A9Eac2267303F9",
   sourceTimeoutMs: 30000,
+  // Vault policy (apps/guardian/config/policy.json, auto-created with defaults).
+  policy: loadPolicy(),
 };
 
 function printTick(tick: ReturnType<typeof runQuoteIteration> extends Promise<infer T> ? T : never): void {
@@ -68,6 +71,14 @@ function printTick(tick: ReturnType<typeof runQuoteIteration> extends Promise<in
               value: Math.round(c.value * 10) / 10,
               detail: c.detail,
             })),
+          },
+        }
+      : {}),
+    ...(tick.policyCheck
+      ? {
+          policy: {
+            allowed: tick.policyCheck.allowed,
+            reasons: tick.policyCheck.reasons,
           },
         }
       : {}),

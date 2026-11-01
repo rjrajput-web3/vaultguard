@@ -60,10 +60,34 @@ NEAR Hackathon "Build Beyond Boundaries" · Unstoppable DeFi track · Nov 1–14
 ### Git
 - Phase A committed. **Not pushed** (repo goes public at submission time).
 
+## 2026-11-01 ~15:30 IST — Phase B: policy editor UI + route-guardian fallback demo
+
+### Built
+- `apps/guardian/src/policy-config.ts` — DEFAULT_POLICY (mirrors on-chain contract init), loadPolicy/savePolicy (atomic JSON write to `apps/guardian/config/policy.json`, auto-created on first run), validatePolicy, knownRouters list. `VAULTGUARD_POLICY_PATH` env override.
+- `apps/guardian/config/policy.json` — live default policy (Base USDC + NEAR USDC allowed, 4 routers, 1000/5000 USDC caps).
+- `apps/guardian/src/route-guardian.ts` — `decideRoute(quote, degraded[], policy)`: pure decision function returning `use-primary` / `fallback-to-alternative` / `no-route-pause` with a timestamped human-readable trail. Picks the healthy alternative with lowest implied slippage; runs the policy check on the selected route; paused vault short-circuits to pause.
+- `apps/guardian/scripts/route-guardian-demo.ts` — 4-step live demo: (1) live quote via loop, (2) guardian decision with healthy primary, (3) simulate primary degradation (RHEA: real re-quote with excludeDexs killing the primary; 1Click: honest no-alternative path), (4) guardian decision + full trail print. Dry-run only.
+- `apps/guardian/src/quote-loop.ts` — `QuoteLoopParams` gains `excludeDexs?` (threaded into RHEA `client.quote`), `policy?`, `spentTodayHuman?`, `decimalsIn?`; `QuoteTick` gains `policyCheck?` evaluated on every healthy tick via `evaluatePolicy`.
+- `apps/guardian/scripts/quote-loop.ts` — loads `config/policy.json` by default; CLI JSON output now includes the `policy` verdict block.
+- `apps/web/pages/api/policy.ts` — GET/PUT policy API (Pages Router format — see quirk note below). GET returns policy + known routers; PUT validates and atomically persists.
+- `apps/web/app/policy/page.tsx` — policy editor UI: guardian controls (vault id, guardian account, paused toggle), spending-limit numbers, allowed-assets textarea (chain:address per line), allowed-routers toggle pills, save with inline validation errors. Matches the existing dark theme.
+- `apps/web/app/page.tsx` — nav bar linking Risk scanner ↔ Vault policy.
+
+### Quirk found (documented for future builds)
+- Next.js 14.2.18 production builds (`next start`) return **405 for App Router route handlers that declare a request parameter** (`PUT(req: Request)`), while parameterless handlers work and `next dev` works for all. Verified via isolation (ping route: no-param PUT → 200, param PUT → 405). Fix: the policy API uses the Pages Router (`pages/api/policy.ts`) instead — GET+PUT verified 200 in prod.
+
+### Verified
+- `tsc --noEmit` clean (guardian + web); `next build` clean.
+- Live: quote loop → 1Click (RHEA still 500s) → risk SAFE 15.7 → `policy.allowed: true`.
+- Policy enforcement end-to-end: set `paused:true` via the web UI → `config/policy.json` updated on disk → quote-loop CLI reports `policy.allowed: false` ("vault is paused — guardian halt in effect") → restored to unpaused.
+- Route-guardian demo: healthy → `use-primary`; degraded primary on 1Click (no alternatives) → `no-route-pause` with full trail; synthetic RHEA-style quote with 2 alternatives → `fallback-to-alternative` selecting `rango` (lowest slippage); paused vault → `no-route-pause`; per-tx cap breach → policy blocks.
+- Web prod server: GET /api/policy 200, PUT valid 200 (persists), PUT invalid 400 (validation errors), /policy and / pages 200.
+
+### Git
+- Phase B committed. **Not pushed** (repo goes public at submission time).
+
 ### Next (following runs)
-1. Get JWT → run dry-run quote → confirm API live.
-2. Live oracle monitor loop (Pyth USDC feed id) + policy editor UI wiring.
-3. Route-guardian fallback demo (kill primary via excludeDexs → alt route, feed shows why).
-4. Contract build (near-sdk-js → wasm) + deploy to NEAR testnet.
-5. Spending-limit on-chain enforcement demo + failure-recovery console.
-6. Demo video + submission (public repo + his X demo post + form). He posts the X demo (X automation banned); need his NEAR payout address at submission.
+1. RHEA quote endpoint still HTTP 500 (server-side) — retry periodically; RHEA-first path activates automatically on recovery.
+2. Contract build (near-sdk-js → wasm) + deploy to NEAR testnet (Phase C).
+3. Spending-limit on-chain enforcement demo + failure-recovery console.
+4. Demo video + submission (public repo + his X demo post + form). He posts the X demo (X automation banned); need his NEAR payout address at submission.

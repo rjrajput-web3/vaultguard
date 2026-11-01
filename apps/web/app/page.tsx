@@ -1,4 +1,5 @@
-/** VAULTGUARD demo UI — scaffold phase. Live quote wiring lands in the next build phase. */
+/** VAULTGUARD demo UI — Phase B: policy editor wired, live quote loop via guardian. */
+import Link from "next/link";
 
 const SAMPLE_REPORT = {
   pair: "Base USDC → NEAR USDC",
@@ -46,6 +47,11 @@ export default function Home() {
       >
         Sample result — demo data. Live RHEA quotes connect in the next build phase.
       </div>
+
+      <nav style={{ display: "flex", gap: 20, marginBottom: 8, fontSize: 14 }}>
+        <span style={{ fontWeight: 800, color: "#e8ecf4" }}>Risk scanner</span>
+        <Link href="/policy" style={{ color: "#7dd3fc" }}>Vault policy</Link>
+      </nav>
 
       <h1 style={{ fontSize: 40, margin: "0 0 8px" }}>VAULTGUARD</h1>
       <p style={{ color: "#9aa4b8", marginTop: 0 }}>

@@ -22,6 +22,7 @@ import {
   resolveOneClickAsset,
   type OneClickQuote,
 } from "./oneclick-client";
+import { evaluatePolicy, type PolicyCheck, type VaultPolicy } from "./policy";
 
 export type QuoteSource = "rhea" | "oneclick";
 
@@ -44,6 +45,14 @@ export interface QuoteLoopParams {
   /** Per-source timeout ms. Default 30000. */
   sourceTimeoutMs?: number;
   riskOpts?: RiskOptions;
+  /** RHEA router ids to exclude from quote selection (guardian fallback). */
+  excludeDexs?: string[];
+  /** Vault policy — when set, each tick carries a policyCheck verdict. */
+  policy?: VaultPolicy;
+  /** USDC-equivalent already spent today (human units), for the daily cap. */
+  spentTodayHuman?: number;
+  /** Decimals of the input asset for policy math. Default 6. */
+  decimalsIn?: number;
 }
 
 export interface QuoteTick {
@@ -52,6 +61,8 @@ export interface QuoteTick {
   healthy: boolean;
   normalized?: NormalizedQuote;
   report?: RiskReport;
+  /** Policy verdict on the quoted route (present when params.policy set). */
+  policyCheck?: PolicyCheck;
   latencyMs: number;
   error?: string;
   /** Which sources were tried, in order. */
@@ -129,6 +140,9 @@ async function fetchRheaQuote(params: QuoteLoopParams): Promise<Quote> {
     amountIn: params.amountIn,
     slippageBps: params.slippageBps ?? 50,
     sender: params.dryRefundTo,
+    ...(params.excludeDexs && params.excludeDexs.length > 0
+      ? { excludeDexs: params.excludeDexs }
+      : {}),
   });
 }
 
@@ -202,6 +216,18 @@ async function fetchOneClickNormalized(params: QuoteLoopParams): Promise<Normali
   });
 }
 
+/** Evaluate the vault policy against a normalized quote, when a policy is set. */
+function checkPolicy(
+  params: QuoteLoopParams,
+  normalized: NormalizedQuote,
+): PolicyCheck | undefined {
+  if (!params.policy) return undefined;
+  return evaluatePolicy(normalized, params.policy, {
+    spentTodayHuman: params.spentTodayHuman ?? 0,
+    decimalsIn: params.decimalsIn ?? 6,
+  });
+}
+
 /**
  * One loop iteration: RHEA first, 1Click on any RHEA failure.
  * Never throws — failures are reported as unhealthy ticks.
@@ -228,6 +254,7 @@ export async function runQuoteIteration(params: QuoteLoopParams): Promise<QuoteT
     const report = scoreRisk(normalized, riskOpts);
     return {
       at, source: "rhea", healthy: true, normalized, report,
+      policyCheck: checkPolicy(params, normalized),
       latencyMs: Date.now() - rheaStart, attempted,
     };
   } catch (err) {
@@ -242,6 +269,7 @@ export async function runQuoteIteration(params: QuoteLoopParams): Promise<QuoteT
       const report = scoreRisk(normalized, riskOpts);
       return {
         at, source: "oneclick", healthy: true, normalized, report,
+        policyCheck: checkPolicy(params, normalized),
         latencyMs: Date.now() - ocStart, attempted,
         error: `rhea failed (${rheaError.slice(0, 120)}), fell back to 1Click`,
       };
