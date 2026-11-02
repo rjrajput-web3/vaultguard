@@ -42,23 +42,10 @@ import {
   type TxRecord,
 } from "../../lib/wallet/near";
 import {
-  NEAR_NETWORKS,
+  NEAR_TESTNET,
   migrateLegacyKeystore,
-  type NearNetwork,
   type NearNetworkConfig,
 } from "../../lib/wallet/network";
-import {
-  connectEvm,
-  getEvmBalance,
-  detectEvmProvider,
-  type EvmConnectResult,
-} from "../../lib/wallet/evm";
-import {
-  connectSolana,
-  getSolanaBalance,
-  detectSolanaProvider,
-  type SolanaConnectResult,
-} from "../../lib/wallet/solana";
 
 /* ---------------- small UI helpers ---------------- */
 
@@ -139,27 +126,27 @@ interface WalletSession {
   secretKey: string; // in memory only — never persisted unencrypted
 }
 
-type MainTab = "dashboard" | "create" | "import" | "connect";
-type ConnectTab = "evm" | "solana";
+type MainTab = "dashboard" | "create" | "import";
 
 /* ---------------- page ---------------- */
 
 function WalletPageInner() {
   const [tab, setTab] = useState<MainTab>("dashboard");
-  const [network, setNetwork] = useState<NearNetwork>("testnet");
+  // TESTNET-ONLY (2026-11-02): VAULTRY runs on NEAR testnet exclusively.
+  // Mainnet paths are compiled but unreachable (see lib/config.ts).
   const [conn, setConn] = useState<TestnetConnection | null>(null);
   const [session, setSession] = useState<WalletSession | null>(null);
   const [savedAccountId, setSavedAccountId] = useState<string | null>(null);
 
-  const cfg: NearNetworkConfig = NEAR_NETWORKS[network];
+  const cfg: NearNetworkConfig = NEAR_TESTNET;
 
   useEffect(() => {
     migrateLegacyKeystore();
   }, []);
 
   useEffect(() => {
-    setConn(createConnection(network));
-    setSession(null); // sessions never cross networks
+    setConn(createConnection());
+    setSession(null);
     try {
       const meta = loadKeystoreMeta(cfg.keystoreKey);
       if (meta.ok) setSavedAccountId(meta.keystore.accountId);
@@ -167,13 +154,8 @@ function WalletPageInner() {
     } catch {
       /* client-only module; ignore on SSR pass */
     }
-  }, [network]);
-
-  function switchNetwork(n: NearNetwork) {
-    if (n === network) return;
-    setNetwork(n);
-    setTab("dashboard");
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="vg-wrap" style={{ paddingTop: 100, paddingBottom: 60, maxWidth: 880 }}>
@@ -183,57 +165,20 @@ function WalletPageInner() {
       </h1>
       <p className="vg-sub" style={{ marginBottom: 22 }}>
         NEAR keys are generated, encrypted and stored on this device only — they are never sent
-        to any server. Ethereum and Solana work through your own external wallet extensions.
+        to any server. Testnet only — all tokens are valueless.
       </p>
 
-      {/* Network selector — testnet and mainnet state never mix. */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: 13, color: "#93a0b8", fontWeight: 700, letterSpacing: 1 }}>NETWORK</span>
-        {(
-          [
-            ["testnet", "NEAR Testnet"],
-            ["mainnet", "NEAR Mainnet"],
-          ] as [NearNetwork, string][]
-        ).map(([k, t]) => (
-          <button
-            key={k}
-            className={network === k ? "vg-btn" : "vg-btn vg-btn-ghost"}
-            onClick={() => switchNetwork(k)}
-            style={
-              k === "mainnet"
-                ? { borderColor: network === "mainnet" ? "rgba(239,68,68,0.6)" : undefined }
-                : undefined
-            }
-          >
-            {t}
-          </button>
-        ))}
+      <div
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 800,
+          letterSpacing: 1.4, color: "#fbbf24", background: "rgba(245,158,11,0.10)",
+          border: "1px solid rgba(245,158,11,0.4)", borderRadius: 999, padding: "8px 16px",
+          marginBottom: 18,
+        }}
+      >
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", boxShadow: "0 0 10px #f59e0b" }} />
+        TESTNET MODE · NEAR TESTNET
       </div>
-      {cfg.isMainnet ? (
-        <div
-          style={{
-            background: "rgba(239,68,68,0.10)",
-            border: "1px solid rgba(239,68,68,0.45)",
-            borderRadius: 10,
-            color: "#fca5a5",
-            padding: "10px 14px",
-            fontSize: 13.5,
-            marginBottom: 18,
-          }}
-          role="alert"
-        >
-          <b>MAINNET — real funds.</b> Every transaction here moves real NEAR. Double-check
-          addresses and amounts; nothing here is a test.
-        </div>
-      ) : (
-        <div style={{ ...hint, marginBottom: 18 }}>
-          Testnet — valueless tokens. Get free test NEAR from the{" "}
-          <a href={cfg.faucetUrl} target="_blank" rel="noreferrer" style={{ color: "#22d3ee" }}>
-            testnet faucet ↗
-          </a>
-          .
-        </div>
-      )}
 
       <div style={{ display: "flex", gap: 10, marginBottom: 24, flexWrap: "wrap" }}>
         {(
@@ -241,7 +186,6 @@ function WalletPageInner() {
             ["dashboard", "Dashboard"],
             ["create", "Create wallet"],
             ["import", "Import wallet"],
-            ["connect", "Connect external"],
           ] as [MainTab, string][]
         ).map(([k, t]) => (
           <button
@@ -295,7 +239,6 @@ function WalletPageInner() {
           }}
         />
       )}
-      {tab === "connect" && <ExternalWallets />}
     </div>
   );
 }
@@ -409,11 +352,9 @@ function Dashboard(props: {
           <>
             <h3 style={{ margin: "0 0 6px" }}>No wallet on this device yet</h3>
             <p style={hint}>
-              Create a new {cfg.label} wallet (keys generated + encrypted locally) or import an
+              Create a new NEAR testnet wallet (keys generated + encrypted locally) or import an
               existing one.{" "}
-              {cfg.isMainnet
-                ? "Mainnet accounts must already exist on-chain — creating keys here does not fund an account."
-                : "Nothing is created on-chain until you fund an account."}
+              ""
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
               <button className="vg-btn" onClick={() => props.goTo("create")}>Create wallet</button>
@@ -498,7 +439,7 @@ function Dashboard(props: {
       <div style={card}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <div style={label}>{cfg.label.toUpperCase()} ACCOUNT</div>
+            <div style={label}>NEAR TESTNET ACCOUNT</div>
             <div style={{ fontFamily: "monospace", fontSize: 19, fontWeight: 700, wordBreak: "break-all" }}>
               {session.accountId}
             </div>
@@ -523,7 +464,7 @@ function Dashboard(props: {
             ↻ Refresh
           </button>
         </div>
-        {balanceError && balanceError.includes("not found") && !cfg.isMainnet && (
+        {balanceError && balanceError.includes("not found") && (
           <div style={{ ...hint, marginTop: 10 }}>
             New account? Fund it on the{" "}
             <a href={cfg.faucetUrl} target="_blank" rel="noreferrer" style={{ color: "#22d3ee" }}>
@@ -550,12 +491,12 @@ function Dashboard(props: {
         {/* SEND */}
         <div style={card}>
           <h3 style={{ margin: "0 0 12px" }}>
-            Send NEAR {cfg.isMainnet ? <span style={{ color: "#fca5a5" }}>(MAINNET — real funds)</span> : "(testnet)"}
+            Send NEAR (testnet)
           </h3>
           {!confirming ? (
             <>
               <Field title="Destination account">
-                <input style={input} value={sendTo} onChange={(e) => setSendTo(e.target.value)} placeholder={cfg.isMainnet ? "receiver.near" : "receiver.testnet"} />
+                <input style={input} value={sendTo} onChange={(e) => setSendTo(e.target.value)} placeholder="receiver.testnet" />
               </Field>
               <Field title="Amount (NEAR)">
                 <input style={input} value={sendAmount} onChange={(e) => setSendAmount(e.target.value)} placeholder="0.5" inputMode="decimal" />
@@ -576,7 +517,7 @@ function Dashboard(props: {
           ) : (
             <>
               <div style={{ ...hint, marginBottom: 14, color: "#e9eef7" }}>
-                <b>Review before signing.</b> This builds a real on-chain transfer on {cfg.label}.{cfg.isMainnet ? " Real NEAR will move — this cannot be undone." : ""}
+                <b>Review before signing.</b> This builds a real on-chain transfer on NEAR testnet.""
               </div>
               <div className="vg-kv" style={{ marginBottom: 16 }}>
                 <div><dt>From</dt><dd style={{ fontFamily: "monospace", fontSize: 13 }}>{session.accountId}</dd></div>
@@ -691,7 +632,7 @@ function CreateFlow({ conn, cfg, onDone }: { conn: TestnetConnection; cfg: NearN
       setError(`"${id || "(empty)"}" is not a valid NEAR account ID (use lowercase letters, digits, . - _)`);
       return;
     }
-    if (cfg.isMainnet && id.endsWith(".testnet")) {
+    if (false) { // testnet-only: no mainnet guard needed
       setError("That is a testnet-style account ID — mainnet accounts end in .near (or a valid subdomain).");
       return;
     }
@@ -761,27 +702,16 @@ function CreateFlow({ conn, cfg, onDone }: { conn: TestnetConnection; cfg: NearN
   return (
     <div>
       <div style={card}>
-        <h3 style={{ margin: "0 0 6px" }}>1 · Choose your {cfg.label} account ID</h3>
+        <h3 style={{ margin: "0 0 6px" }}>1 · Choose your NEAR testnet account ID</h3>
         <p style={hint}>
           This creates the <b>keys</b> on this device.{" "}
-          {cfg.isMainnet ? (
-            <>
-              The account itself must <b>already exist on NEAR mainnet</b> with real NEAR to be
-              usable — generating keys here does not create or fund it.
-            </>
-          ) : (
-            <>
-              The account itself becomes usable once it exists on NEAR testnet (e.g. funded via
-              the{" "}
-              <a href={cfg.faucetUrl} target="_blank" rel="noreferrer" style={{ color: "#22d3ee" }}>
-                testnet faucet ↗
-              </a>
-              ).
-            </>
-          )}
+          <a href={cfg.faucetUrl} target="_blank" rel="noreferrer" style={{ color: "#22d3ee" }}>
+            testnet faucet ↗
+          </a>
+          .
         </p>
-        <Field title={`${cfg.label} account ID`}>
-          <input style={input} value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder={cfg.accountHint} disabled={!!wallet} />
+        <Field title={`NEAR testnet account ID`}>
+          <input style={input} value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder="you.testnet" disabled={!!wallet} />
         </Field>
         {!wallet && (
           <button className="vg-btn" onClick={generate}>
@@ -946,10 +876,8 @@ function ImportFlow({ conn, cfg, onDone }: { conn: TestnetConnection; cfg: NearN
         if (!v.ok) {
           if (v.notFound) {
             setNotice(
-              `Note: "${id}" does not exist on ${cfg.label} yet — the key was imported anyway. ` +
-              (cfg.isMainnet
-                ? "The account must be created/funded with real NEAR before it can transact."
-                : "Fund it via the testnet faucet to activate it.")
+              `Note: "${id}" does not exist on $NEAR testnet yet — the key was imported anyway. ` +
+              ""
             );
           } else {
             setError(v.error);
@@ -975,7 +903,7 @@ function ImportFlow({ conn, cfg, onDone }: { conn: TestnetConnection; cfg: NearN
 
   return (
     <div style={card}>
-      <h3 style={{ margin: "0 0 6px" }}>Import an existing {cfg.label} wallet</h3>
+      <h3 style={{ margin: "0 0 6px" }}>Import an existing NEAR testnet wallet</h3>
       <p style={hint}>
         Your phrase or private key is parsed and encrypted <b>on this device only</b> — it is never
         sent to any server. After import it is cleared from this form. The key is verified
@@ -993,8 +921,8 @@ function ImportFlow({ conn, cfg, onDone }: { conn: TestnetConnection; cfg: NearN
           </button>
         ))}
       </div>
-      <Field title={`${cfg.label} account ID`}>
-        <input style={input} value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder={cfg.accountHint} />
+      <Field title={`$NEAR testnet account ID`}>
+        <input style={input} value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder="you.testnet" />
       </Field>
       <Field title={kind === "phrase" ? "12-word recovery phrase" : "Private key (ed25519:…)"}>
         <textarea
@@ -1017,181 +945,6 @@ function ImportFlow({ conn, cfg, onDone }: { conn: TestnetConnection; cfg: NearN
       </button>
       {notice && <div style={okBox}>{notice}</div>}
       {error && <ErrorBox message={error} />}
-    </div>
-  );
-}
-
-/* ================= EXTERNAL WALLETS (EVM / SOLANA) ================= */
-
-function ExternalWallets() {
-  const [ctab, setCtab] = useState<ConnectTab>("evm");
-  return (
-    <div>
-      <div style={card}>
-        <h3 style={{ margin: "0 0 6px" }}>Connect an external wallet</h3>
-        <p style={hint}>
-          Ethereum and Solana accounts connect through <b>your own wallet extensions</b>
-          (MetaMask, Phantom, …). VaultGuard never asks for their keys and never manages them.
-          If no wallet is detected, we say so — one connector never pretends to cover every chain.
-        </p>
-        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-          <button className={ctab === "evm" ? "vg-btn" : "vg-btn vg-btn-ghost"} onClick={() => setCtab("evm")}>
-            Ethereum
-          </button>
-          <button className={ctab === "solana" ? "vg-btn" : "vg-btn vg-btn-ghost"} onClick={() => setCtab("solana")}>
-            Solana
-          </button>
-        </div>
-      </div>
-      {ctab === "evm" ? <EvmPanel /> : <SolanaPanel />}
-    </div>
-  );
-}
-
-function EvmPanel() {
-  const [result, setResult] = useState<EvmConnectResult | null>(null);
-  const [balance, setBalance] = useState<string | null>(null);
-  const [balanceError, setBalanceError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function connect() {
-    setBusy(true);
-    setBalance(null);
-    setBalanceError(null);
-    const r = await connectEvm();
-    setResult(r);
-    if (r.status === "connected") {
-      try {
-        const b = await getEvmBalance(r.address);
-        setBalance(b.eth);
-      } catch (e) {
-        setBalanceError(e instanceof Error ? e.message : "Balance unavailable");
-      }
-    }
-    setBusy(false);
-  }
-
-  return (
-    <div style={card}>
-      <h3 style={{ margin: "0 0 6px" }}>Ethereum · external wallet</h3>
-      {result === null && (
-        <>
-          <p style={hint}>
-            {detectEvmProvider()
-              ? "An injected EVM wallet was detected in this browser."
-              : "No EVM wallet extension detected in this browser."}
-          </p>
-          <button className="vg-btn" disabled={busy} onClick={connect}>
-            {busy ? "Waiting for wallet…" : "Connect EVM wallet"}
-          </button>
-        </>
-      )}
-      {result?.status === "not-detected" && (
-        <div style={errBox}>
-          <b>No EVM wallet detected.</b> Install MetaMask or another EVM wallet extension in this
-          browser, then try again. VaultGuard cannot create or manage Ethereum keys for you.
-        </div>
-      )}
-      {result?.status === "rejected" && <ErrorBox message={result.message} />}
-      {result?.status === "error" && <ErrorBox message={result.message} />}
-      {result?.status === "connected" && (
-        <>
-          <div style={{ ...okBox, marginBottom: 12 }}>✓ Connected</div>
-          <div style={label}>ADDRESS</div>
-          <div style={{ fontFamily: "monospace", fontSize: 15, wordBreak: "break-all", marginBottom: 14 }}>
-            {result.address}
-          </div>
-          <div style={label}>BALANCE (READ-ONLY, ETHEREUM MAINNET)</div>
-          {balance !== null ? (
-            <div style={{ fontSize: 24, fontWeight: 800 }}>
-              {balance} <span style={{ fontSize: 14, color: "#93a0b8" }}>ETH</span>
-            </div>
-          ) : (
-            <div style={{ color: "#fca5a5", fontSize: 15 }}>{balanceError ?? "Loading…"}</div>
-          )}
-          <p style={{ ...hint, marginTop: 12 }}>
-            Sending from this address happens in your wallet's own UI — VaultGuard never signs
-            Ethereum transactions on your behalf.
-          </p>
-          <button className="vg-btn vg-btn-ghost" onClick={() => { setResult(null); setBalance(null); }}>
-            Disconnect view
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
-function SolanaPanel() {
-  const [result, setResult] = useState<SolanaConnectResult | null>(null);
-  const [balance, setBalance] = useState<string | null>(null);
-  const [balanceError, setBalanceError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function connect() {
-    setBusy(true);
-    setBalance(null);
-    setBalanceError(null);
-    const r = await connectSolana();
-    setResult(r);
-    if (r.status === "connected") {
-      try {
-        const b = await getSolanaBalance(r.address);
-        setBalance(b.sol);
-      } catch (e) {
-        setBalanceError(e instanceof Error ? e.message : "Balance unavailable");
-      }
-    }
-    setBusy(false);
-  }
-
-  return (
-    <div style={card}>
-      <h3 style={{ margin: "0 0 6px" }}>Solana · external wallet</h3>
-      {result === null && (
-        <>
-          <p style={hint}>
-            {detectSolanaProvider()
-              ? "An injected Solana wallet was detected in this browser."
-              : "No Solana wallet extension detected in this browser."}
-          </p>
-          <button className="vg-btn" disabled={busy} onClick={connect}>
-            {busy ? "Waiting for wallet…" : "Connect Solana wallet"}
-          </button>
-        </>
-      )}
-      {result?.status === "not-detected" && (
-        <div style={errBox}>
-          <b>No Solana wallet detected.</b> Install Phantom or another Solana wallet extension in
-          this browser, then try again. VaultGuard cannot create or manage Solana keys for you.
-        </div>
-      )}
-      {result?.status === "rejected" && <ErrorBox message={result.message} />}
-      {result?.status === "error" && <ErrorBox message={result.message} />}
-      {result?.status === "connected" && (
-        <>
-          <div style={{ ...okBox, marginBottom: 12 }}>✓ Connected</div>
-          <div style={label}>ADDRESS</div>
-          <div style={{ fontFamily: "monospace", fontSize: 15, wordBreak: "break-all", marginBottom: 14 }}>
-            {result.address}
-          </div>
-          <div style={label}>BALANCE (READ-ONLY, SOLANA MAINNET)</div>
-          {balance !== null ? (
-            <div style={{ fontSize: 24, fontWeight: 800 }}>
-              {balance} <span style={{ fontSize: 14, color: "#93a0b8" }}>SOL</span>
-            </div>
-          ) : (
-            <div style={{ color: "#fca5a5", fontSize: 15 }}>{balanceError ?? "Loading…"}</div>
-          )}
-          <p style={{ ...hint, marginTop: 12 }}>
-            Sending from this address happens in your wallet's own UI — VaultGuard never signs
-            Solana transactions on your behalf.
-          </p>
-          <button className="vg-btn vg-btn-ghost" onClick={() => { setResult(null); setBalance(null); }}>
-            Disconnect view
-          </button>
-        </>
-      )}
     </div>
   );
 }

@@ -7,8 +7,7 @@
     "next": "14.2.18",
     "qrcode": "^1.5.4",
     "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "@rhea-finance/cross-chain-aggregation-dex": "^2.1.9"
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@types/node": "^20",

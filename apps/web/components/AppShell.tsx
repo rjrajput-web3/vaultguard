@@ -10,7 +10,7 @@
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import BrandMark from "./BrandMark";
-import RheaStatusPill from "./RheaStatusPill";
+import { PRODUCT_MODE_LABEL } from "../lib/config";
 
 interface NavItem {
   href: string;
@@ -51,11 +51,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           radial-gradient(1200px 600px at 85% -10%, rgba(124,58,237,0.16), transparent 60%),
           radial-gradient(900px 500px at -10% 110%, rgba(168,85,247,0.10), transparent 60%),
           var(--bg-0); }
+        .vaultry-app::before {
+          content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+          background: radial-gradient(ellipse 90% 60% at 50% 110%, rgba(124,58,237,0.08), transparent 70%);
+        }
         .v-sidebar {
           width: 248px; flex-shrink: 0; position: sticky; top: 0; height: 100vh;
           display: flex; flex-direction: column; gap: 6px; padding: 22px 16px;
-          border-right: 1px solid rgba(168,85,247,0.14);
-          background: rgba(8,6,18,0.72); backdrop-filter: blur(18px); z-index: 40;
+          border-right: 1px solid rgba(168,85,247,0.22);
+          background: linear-gradient(180deg, rgba(14,10,32,0.88), rgba(8,6,18,0.78));
+          backdrop-filter: blur(18px); z-index: 40;
+          box-shadow: inset -1px 0 0 rgba(255,255,255,0.04), 20px 0 50px rgba(0,0,0,0.35);
         }
         .v-logo { display: flex; align-items: center; gap: 12px; padding: 4px 10px 18px; text-decoration: none; }
         .v-logo img { width: 40px; height: 40px; border-radius: 12px; object-fit: cover; box-shadow: 0 0 24px rgba(139,92,246,0.45); }
@@ -66,7 +72,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           color: var(--muted); text-decoration: none; font-size: 14.5px; font-weight: 500;
           transition: all .18s ease; border: 1px solid transparent;
         }
-        .v-nav a:hover { color: #fff; background: rgba(139,92,246,0.10); }
+        .v-nav a:hover { color: #fff; background: rgba(139,92,246,0.10); transform: translateX(2px); }
         .v-nav a.active {
           color: #fff; font-weight: 700;
           background: linear-gradient(100deg, rgba(124,58,237,0.55), rgba(139,92,246,0.28));
@@ -78,21 +84,30 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           color: #c4b5fd; border: 1px solid rgba(168,85,247,0.3); }
         .v-side-foot { margin-top: auto; padding: 14px; border-radius: 14px;
           background: linear-gradient(140deg, rgba(124,58,237,0.22), rgba(34,211,238,0.08));
-          border: 1px solid rgba(168,85,247,0.25); }
+          border: 1px solid rgba(168,85,247,0.25);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06); }
         .v-side-foot p { margin: 0 0 10px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
-        .v-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .v-main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; z-index: 1; }
         .v-topbar {
           position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 14px;
-          padding: 14px 28px; border-bottom: 1px solid rgba(168,85,247,0.12);
-          background: rgba(4,7,15,0.66); backdrop-filter: blur(16px);
+          padding: 14px 28px; border-bottom: 1px solid rgba(168,85,247,0.18);
+          background: linear-gradient(180deg, rgba(10,6,24,0.85), rgba(4,7,15,0.66));
+          backdrop-filter: blur(16px);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.35);
         }
         .v-menu-btn { display: none; background: none; border: 1px solid rgba(168,85,247,0.3);
           color: #fff; border-radius: 10px; padding: 8px 12px; cursor: pointer; font-size: 16px; }
-        .v-topbar .v-status { display: flex; align-items: center; gap: 8px; font-size: 13px;
-          color: #6ee7b7; background: rgba(34,197,94,0.10); border: 1px solid rgba(34,197,94,0.25);
-          padding: 7px 14px; border-radius: 20px; margin-left: auto; white-space: nowrap; }
-        .v-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 10px #22c55e; animation: v-pulse 2s infinite; }
-        @keyframes v-pulse { 50% { opacity: .5; } }
+        .v-testnet-badge {
+          display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800;
+          letter-spacing: 1.4px; color: #fbbf24;
+          background: linear-gradient(100deg, rgba(245,158,11,0.16), rgba(245,158,11,0.06));
+          border: 1px solid rgba(245,158,11,0.45); border-radius: 999px; padding: 8px 16px;
+          margin-left: auto; white-space: nowrap;
+          box-shadow: 0 0 18px rgba(245,158,11,0.18), inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+        .v-testnet-dot { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;
+          box-shadow: 0 0 10px #f59e0b; animation: v-pulse 2s ease-in-out infinite; }
+        @keyframes v-pulse { 50% { opacity: .45; } }
         .v-content { padding: 28px; max-width: 1240px; width: 100%; margin: 0 auto; }
         @media (max-width: 900px) {
           .v-sidebar { position: fixed; left: 0; transform: translateX(-105%); transition: transform .25s ease; box-shadow: 30px 0 60px rgba(0,0,0,.5); }
@@ -141,7 +156,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <div className="v-main">
         <div className="v-topbar">
           <button className="v-menu-btn" onClick={() => setOpen(!open)} aria-label="Menu">☰</button>
-          <RheaStatusPill />
+          <span className="v-testnet-badge" title="VAULTRY runs on testnet only — all tokens are valueless test tokens">
+            <span className="v-testnet-dot" />{PRODUCT_MODE_LABEL}
+          </span>
         </div>
         <div className="v-content">{children}</div>
       </div>

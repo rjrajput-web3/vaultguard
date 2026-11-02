@@ -37,7 +37,7 @@ TypeScript, Next.js 14, Node.js
 https://github.com/rjrajput-web3/vaultguard (public, pushed 2026-11-02 ~13:15 IST, verified)
 
 ## Demo video URL
-v3 cinematic demo (1080p, 140s): https://muse.ai/files/1293737760499625/1613595446432788/qwnlzp1wi16onj8yjfrjrzpq/vaultguard-final.mp4 (expires 2026-11-04 16:21 UTC — re-upload before X post if expired)
+v4 cinematic demo (1080p, 147s): https://muse.ai/files/1293737760499625/1430375852512567/1wckakvxdm170vcwrvjolr3s/vaultguard-final.mp4 (expires 2026-11-04 17:57 UTC — re-upload before X post if expired)
 Local file (in progress): ~/workspace/vaultguard/demo/v2/vaultguard-final.mp4
 
 ## Live demo / contract

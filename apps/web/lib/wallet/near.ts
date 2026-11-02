@@ -17,7 +17,7 @@ import {
 } from "near-api-js";
 import { parseSeedPhrase } from "near-seed-phrase";
 import { validateMnemonic } from "bip39";
-import { NEAR_NETWORKS, type NearNetwork } from "./network";
+import { NEAR_TESTNET } from "./network";
 
 export const NEAR_TESTNET_RPC = "https://rpc.testnet.fastnear.com";
 export const NEAR_NETWORK_ID = "testnet";
@@ -74,13 +74,13 @@ export function isValidAccountId(accountId: string): boolean {
 /* ---------------- connection ---------------- */
 
 /** Open a read-only-capable NEAR connection for the given network. Stateless — no keystore. */
-export function createConnection(network: NearNetwork): TestnetConnection {
-  return { provider: new JsonRpcProvider({ url: NEAR_NETWORKS[network].rpcUrl }) };
+export function createConnection(): TestnetConnection {
+  return { provider: new JsonRpcProvider({ url: NEAR_TESTNET.rpcUrl }) };
 }
 
 /** Open a read-only-capable NEAR testnet connection. Stateless — no keystore. */
 export function createTestnetConnection(): TestnetConnection {
-  return createConnection("testnet");
+  return createConnection();
 }
 
 /**

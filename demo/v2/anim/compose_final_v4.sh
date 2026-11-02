@@ -46,10 +46,10 @@ mktrans() { # $1=A $2=dA $3=B $4=out
   local A=$1 dA=$2 B=$3 out=$4
   local tail_start=$(python3 -c "print(round($dA - $TR, 3))")
   ffmpeg -y -v error -i build/v4clips/${A}.mp4 \
-    -vf "trim=start=${tail_start}:end=${dA}:setpts=PTS-STARTPTS,zoompan=z='1+0.14*on/$TN':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080:${ZP}" \
+    -vf "trim=start=${tail_start}:end=${dA},setpts=PTS-STARTPTS,zoompan=z='1+0.14*on/$TN':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080:${ZP}" \
     -c:v libx264 -preset medium -crf 18 -r 30 build/v4clips/${out}_a.mp4
   ffmpeg -y -v error -i build/v4clips/${B}.mp4 \
-    -vf "trim=start=0:end=${TR}:setpts=PTS-STARTPTS,zoompan=z='1.14-0.14*on/$TN':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080:${ZP}" \
+    -vf "trim=start=0:end=${TR},setpts=PTS-STARTPTS,zoompan=z='1.14-0.14*on/$TN':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080:${ZP}" \
     -c:v libx264 -preset medium -crf 18 -r 30 build/v4clips/${out}_b.mp4
   ffmpeg -y -v error -i build/v4clips/${out}_a.mp4 -i build/v4clips/${out}_b.mp4 \
     -filter_complex "[0][1]xfade=transition=fade:duration=${TR}:offset=0" \

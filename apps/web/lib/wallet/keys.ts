@@ -12,7 +12,7 @@
 import { KeyPair, type KeyPairString } from "near-api-js";
 import { generateSeedPhrase, parseSeedPhrase } from "near-seed-phrase";
 import { validateMnemonic } from "bip39";
-import { NEAR_NETWORKS } from "./network";
+import { NEAR_TESTNET } from "./network";
 
 /** Normalize user-entered phrase text (case, spacing) before any crypto use. */
 export function normalizeSeedPhrase(seedPhrase: string): string {
@@ -73,7 +73,7 @@ function assertBrowser(): void {
 
 const KEYSTORE_KEY = "vaultguard.wallet.keystore.v1";
 /** Default slot = testnet (pre-separation behavior preserved for old callers). */
-const DEFAULT_KEYSTORE_KEY = NEAR_NETWORKS.testnet.keystoreKey;
+const DEFAULT_KEYSTORE_KEY = NEAR_TESTNET.keystoreKey;
 const PBKDF2_ITERATIONS = 210_000;
 
 /* ---------------- base64 helpers (browser-safe, no Buffer) ---------------- */

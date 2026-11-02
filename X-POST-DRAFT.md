@@ -10,7 +10,7 @@
 >
 > Proven on NEAR testnet: 500 USDC approved, 2000 over the cap rejected by the contract itself, pause/unpause recovery end-to-end.
 >
-> Demo video: https://muse.ai/files/1293737760499625/1613595446432788/qwnlzp1wi16onj8yjfrjrzpq/vaultguard-final.mp4 (v3, 1080p 140s — re-upload if link expired before posting)
+> Demo video: https://muse.ai/files/1293737760499625/1430375852512567/1wckakvxdm170vcwrvjolr3s/vaultguard-final.mp4 (v4, 1080p 147s — re-upload if link expired before posting)
 > Live demo: https://vaultry.vercel.app
 > Code: https://github.com/rjrajput-web3/vaultguard
 >
