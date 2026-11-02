@@ -102,6 +102,10 @@ async function main() {
     }
   }
 
+  // Subaccount was created with the deployer's public key as its full-access
+  // key, so the same keypair signs for it. Register it in the keystore.
+  await keyStore.setKey("testnet", subaccount, KeyPair.fromString(deployerKey));
+
   // 2. Deploy the wasm.
   console.log("deploying contract...");
   const vault = await near.account(subaccount);

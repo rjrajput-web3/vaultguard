@@ -114,3 +114,27 @@ NEAR Hackathon "Build Beyond Boundaries" · Unstoppable DeFi track · Nov 1–14
 
 ### Git
 - Phase C committed. **Not pushed** (repo goes public at submission time).
+
+## 2026-11-02 ~09:45 IST — Phase D: on-chain spending-limit demo — PASS
+
+### Run
+- `contracts/vault/scripts/spending-limit-demo.mjs` (testnet, guardian signer; transcript: `docs/spending-limit-demo-transcript-2026-11-02.txt`).
+- Vault: vaultguard.vgdeployer.testnet — get_status: paused=false, guardian=vgdeployer.testnet, max_spend_per_tx=1000000000, allowed_assets=[8453:Base-USDC, near:USDC].
+
+### Transactions (all on testnet, guardian vgdeployer.testnet)
+1. `request_withdraw` 500 USDC (≤ 1000 cap) → **APPROVED** — tx EEHfcL14YnABocSomyUJGNTozoBQFrLRHqinPAa2na5j
+2. `request_withdraw` 2000 USDC (> cap) → **REJECTED** — `VAULTGUARD: amount exceeds per-tx spend cap`
+3. `set_paused(true)` → OK — tx Dq8R4nZqRoSsUYnHD2MTh4NNVjrMF9k5cRLhBJ3PcdWo
+4. `request_withdraw` 100 USDC while paused → **REJECTED** — `VAULTGUARD: vault is paused — guardian halt in effect`
+5. `set_paused(false)` → OK — tx FR5g2Xm9fCK63Tj9sG91jGcTLYbpQxdGERo1Vb2nvkfB
+6. `request_withdraw` 100 USDC after unpause → **APPROVED** — tx Goz6hbkT5LyVdKCP7sv4SZqMJ4dE98hqRB3CaHqYgbNy
+
+**VERDICT: PASS** — per-tx cap + pause flag enforced on-chain (contract is the final authority, not just the off-chain policy engine); guardian pause/unpause recovery works end-to-end. Failure-recovery console behavior proven.
+
+### Remaining (unchanged)
+1. RHEA quote endpoint still HTTP 500 (server-side) — retry periodically; RHEA-first path activates automatically on recovery.
+2. Demo video ~Nov 13 (real-motion rules: no static frames, no PIL-drawn UI, edge-tts/piper VO, continuous camera motion).
+3. Submission by Nov 14 23:59 UTC: public repo + his X demo post (HE posts — X automation banned) + form + his NEAR payout address.
+
+### Git
+- Phase D committed (c9d5822). **Not pushed** (repo goes public at submission time).

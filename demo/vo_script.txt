@@ -1,0 +1,14 @@
+SCENE 1 — HOOK (0:00-0:20)
+In April 2026, a single flawed swap function drained eighteen point four million dollars from RHEA. DeFi vaults keep dying the same way: blind swaps, no pre-flight checks, no limits. VaultGuard is a self-protecting cross-chain vault that refuses to swap blind.
+
+SCENE 2 — RISK SCANNER (0:20-1:00)
+Before any route executes, VaultGuard's pre-flight risk scanner scores it. Router health, slippage, fees, and exit cost — every quote gets a verdict: safe, caution, or blocked. When the primary router degrades, the route guardian falls back to a healthy alternative automatically, and leaves a human-readable trail explaining exactly why it switched. Three alternative routes are evaluated for every single quote. It never blind-swaps.
+
+SCENE 3 — POLICY EDITOR (1:00-1:40)
+Guardians set hard policy: maximum spend per transaction, daily caps, allowed assets, allowed routers. Every withdrawal is checked against this policy before it touches the chain. Change a limit here, and the vault enforces it on-chain — not as a suggestion, as code. The contract is the final authority, not the UI.
+
+SCENE 4 — ON-CHAIN PROOF (1:40-2:20)
+And here is the proof, live on NEAR testnet, against the deployed contract. Six real transactions. A five hundred USDC withdrawal: approved. Two thousand USDC, over the per-transaction cap: rejected by the contract itself. The guardian pauses the vault: every withdrawal halts. Unpause: withdrawals resume instantly. Cap enforced. Pause enforced. Recovery proven. All on-chain, all verifiable.
+
+SCENE 5 — CLOSING (2:20-2:40)
+VaultGuard. Pre-flight risk scanning, smart route fallback, user-defined spending limits, and on-chain enforcement. Built for the NEAR Build Beyond Boundaries hackathon, Unstoppable DeFi track, by Rohit Rajput.

@@ -7,3 +7,13 @@ build/
 .DS_Store
 next-env.d.ts
 tsconfig.tsbuildinfo
+# demo video intermediates (keep final mp4 + scripts)
+demo/raw/
+demo/build/
+demo/vo/
+demo/check_*.png
+demo/chk_*.png
+demo/b_*.png
+demo/h_*.png
+demo/h2_*.png
+demo/policy_state.png
