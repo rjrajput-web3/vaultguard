@@ -1,26 +1,33 @@
-# VAULTGUARD — submission form fields (NEAR "Build Beyond Boundaries")
+# VAULTRY — submission form fields (NEAR "Build Beyond Boundaries")
 # Prepared 2026-11-02. DO NOT submit — parent agent handles repo + form submit.
+# FINAL-CHECK BEFORE SUBMITTING: confirm https://vaultry.vercel.app serves the merged
+# VAULTRY build (all 3 module pages live), the YouTube video URL is public, and the
+# repo main branch matches the deployed build.
 
 ## Project name
-VAULTGUARD
+VAULTRY
 
 ## One-line description
-A self-protecting cross-chain vault on RHEA X Chain SDK + NEAR Intents — pre-flight risk
-scanning, smart route fallback, user spending limits, and on-chain enforcement. Never blind swaps.
+One product, three defenses for cross-chain DeFi: Unstoppable DeFi swaps, AI Security &
+Defense scoring, and Private AI analysis — with a NEAR contract enforcing limits on-chain.
 
 ## Long description
-In April 2026, a single flawed swap function drained $18.4M from RHEA. VAULTGUARD is an
-independent safety and recovery layer wrapped around cross-chain execution: (1) a pre-flight
-risk scanner scoring every quote 0–100 with SAFE/CAUTION/BLOCKED verdicts; (2) a smart route
-guardian that falls back to healthy alternatives (NEAR Intents fallback when RHEA degrades)
-with a human-readable decision trail; (3) user-defined spending limits and asset permissions
-via a policy editor; (4) stablecoin depeg detection with automatic vault pause; (5) a NEAR
-smart contract enforcing the per-transaction spend cap and pause flag on-chain as the final
-authority. Proven on NEAR testnet: 6 real transactions — 500 USDC approved, 2000 USDC rejected
-by the contract, guardian pause/unpause recovery end-to-end. 100% original work, solo build.
+In April 2026, a single flawed swap function drained $18.4M from RHEA. VAULTRY is one
+unified product with three working modules: (1) Unstoppable DeFi — multichain wallet
+(NEAR testnet create/import, EVM/Solana connectors), live NEAR Intents 1Click quotes,
+cross-chain swap UI, and a route guardian with automatic fallback when a router degrades;
+(2) AI Security & Defense — every quote scored SAFE/CAUTION/BLOCKED by a deterministic
+risk engine plus live detectors for suspicious routers, abnormal slippage,
+implied-liquidity risk and unverified tokens, user address allowlist/denylist, and
+automated session policies; spending limits enforced by the NEAR smart contract on-chain;
+(3) Privacy & Private AI — risk analysis runs client-side (identifiers hashed, keys never
+leave the device, minimal-data contracts, privacy dashboard with per-module consent) plus
+live keyless verification of NEAR AI Cloud TEE attestation. Proven on NEAR testnet: 6 real
+transactions — 500 USDC approved, 2000 USDC rejected by the contract, guardian pause/unpause
+recovery end-to-end. 100% original work, solo build.
 
 ## Track
-Unstoppable DeFi
+Unstoppable DeFi + AI Security & Defense + Privacy & Private AI (three integrated modules, one product)
 
 ## Tech stack
 NEAR (near-sdk-js smart contract, testnet), RHEA X Chain SDK, NEAR Intents 1Click API,
@@ -30,12 +37,12 @@ TypeScript, Next.js 14, Node.js
 https://github.com/rjrajput-web3/vaultguard (public, pushed 2026-11-02 ~13:15 IST, verified)
 
 ## Demo video URL
-[TO FILL — public YouTube link, <3 min]
-Local file: ~/workspace/vaultguard/demo/vaultguard-demo.mp4
+[TO FILL — public YouTube link, <3 min — video remake in progress, do not fill yet]
+Local file (in progress): ~/workspace/vaultguard/demo/v2/vaultguard-final.mp4
 
 ## Live demo / contract
-NEAR testnet contract: vaultguard.vgdeployer.testnet
-Web UI: run locally per README (npm run dev)
+VAULTRY security contract (NEAR testnet): vaultguard.vgdeployer.testnet
+Web UI: https://vaultry.vercel.app
 
 ## Payout address (NEAR mainnet)
 exxxmusk.tg

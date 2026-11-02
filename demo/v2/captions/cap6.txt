@@ -1,0 +1,1 @@
+Guardian falls back on degradation — depeg monitor never sleeps.

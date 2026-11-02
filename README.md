@@ -1,9 +1,12 @@
-# VAULTGUARD — Self-Protecting Cross-Chain Vault
+# VAULTRY — Multichain Wallet & Cross-Chain Security
+
+> **Built as VAULTGUARD and renamed VAULTRY for public launch — the underlying
+> NEAR security contract remains `vaultguard.vgdeployer.testnet`.**
 
 **NEAR Hackathon "Build Beyond Boundaries" · Unstoppable DeFi track · Nov 1–14, 2026**
 
 In April 2026, a single flawed swap function drained **$18.4M** from RHEA. DeFi vaults keep dying
-the same way: blind swaps, no pre-flight checks, no limits. VAULTGUARD is an independent
+the same way: blind swaps, no pre-flight checks, no limits. VAULTRY is an independent
 **safety and recovery layer** wrapped around cross-chain execution on the **RHEA X Chain SDK** +
 **NEAR Intents** — protocol-grade protection packaged as a retail user-facing vault.
 
@@ -11,7 +14,8 @@ the same way: blind swaps, no pre-flight checks, no limits. VAULTGUARD is an ind
 > contract enforces user limits as the final authority — not the UI, not an off-chain server.
 
 🎬 **Demo video:** _(YouTube link added at submission)_
-🔗 **Live contract (NEAR testnet):** `vaultguard.vgdeployer.testnet`
+🔗 **VAULTRY security contract (NEAR testnet):** `vaultguard.vgdeployer.testnet`
+🌐 **Live demo:** https://vaultry.vercel.app
 
 ## The 5 features
 
@@ -45,11 +49,49 @@ the same way: blind swaps, no pre-flight checks, no limits. VAULTGUARD is an ind
 Full transcript: [`docs/spending-limit-demo-transcript-2026-11-02.txt`](docs/spending-limit-demo-transcript-2026-11-02.txt).
 All verifiable on the NEAR testnet explorer.
 
+## Try it yourself (judge walkthrough)
+
+Every step below works on the live deployment right now — do X, see Y.
+(The live URL currently serves the VAULTGUARD-branded build; the VAULTRY rebrand and the
+wallet / swap / faucet / lab pages deploy with the product build in progress on
+`feature/full-product-build`.)
+
+1. **Open https://vaultry.vercel.app** → see the homepage: hero, live risk-scanner gauge,
+   animated route-guardian flow, depeg dashboard, policy preview, on-chain proof cards,
+   and the architecture diagram.
+2. **Scroll to "On-Chain Proof"** → see 6 transaction cards: 500 USDC withdraw approved,
+   2000 USDC rejected over the cap, guardian pause, withdraw-while-paused rejected,
+   unpause, 100 USDC approved — each with a clickable NEAR Explorer link.
+3. **Click any transaction link** (e.g. `EEHfcL14YnABocSomyUJGNTozoBQFrLRHqinPAa2na5j`) →
+   the NEAR testnet explorer opens showing that real transaction: status Success,
+   block height, and receipts. Nothing is mocked — these are the actual demo transactions.
+4. **Click the contract account link** (`vaultguard.vgdeployer.testnet`) → see the live
+   contract account on the explorer: balance, code hash, and its transaction history.
+5. **Open https://vaultry.vercel.app/policy** → see the policy console with LIVE data
+   from `/api/policy`: paused flag, max spend per tx (1000), max spend per day (5000),
+   allowed assets and routers.
+6. **Edit "Max spend per tx" and Save** → the value updates and persists
+   (`PUT /api/policy` returns `{"ok":true,...}` and a re-GET shows the new value).
+   Honest scope note: this edits the operator's off-chain policy used by the guardian;
+   the on-chain contract enforces its own cap/pause independently, as proven in step 3.
+7. **Run the guardian dry-run locally** → `cd apps/guardian && npx ts-node
+   scripts/route-guardian-demo.ts` attempts a real 1Click dry-run quote and prints the
+   guardian's SAFE / CAUTION / BLOCKED decision trail. No funds move, no key needed.
+   Solver-availability note: the 1Click solver was quoting live on 2026-11-02 ~15:24 IST
+   but returned "Quoting for this pair is not available" on re-check ~18:23 IST — if the
+   solver is temporarily down when you run it, the script exits with the solver's own
+   error message instead of a quote (that failure is the API's, not the repo's).
+
+> **Live Testing Lab** (guided: connect testnet wallet → faucet-fund → fetch a real
+> quote → run the risk scanner → edit your own isolated policy → call the contract and
+> verify each tx hash) is being built now and will extend this walkthrough once
+> deployed — it is not on the live URL yet, so it is not listed as a step above.
+
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  VAULTGUARD UI (Next.js, TypeScript)            │
+│  VAULTRY UI (Next.js, TypeScript)            │
 │  pre-flight report card · policy editor ·       │
 │  guardian feed · recovery console               │
 └──────────────┬──────────────────────────────────┘
@@ -94,7 +136,7 @@ Secrets (RHEA JWT, deployer keys) live in env files only — never in code, neve
 
 100% original work, built Nov 1–2, 2026 for this hackathon. No templates, no tutorial
 redeploys: the risk engine, route-guardian fallback logic, policy engine, depeg flow, and the
-NEAR vault contract were all written for VAULTGUARD. Repo source matches the deployed
+NEAR vault contract were all written for VAULTRY. Repo source matches the deployed
 testnet contract.
 
 ## Two independent submissions

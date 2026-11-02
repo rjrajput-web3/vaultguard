@@ -2,7 +2,7 @@
 Usage: python term_play.py <input.txt> <start_line> <end_line> <duration_s> <out.mp4> <label> <title>
 Lines are 1-based inclusive. Output is real; only the reveal animation is synthetic.
 """
-import math, subprocess, sys
+import math, subprocess, sys, textwrap
 import numpy as np
 from PIL import Image, ImageDraw
 sys.path.insert(0, "/home/hatch/workspace/vaultguard/demo/v2/anim")
@@ -10,6 +10,7 @@ from common import *
 
 TERM_BG = (10, 14, 23)
 TERM_BAR = (18, 26, 42)
+WRAP_WIDTH = 92  # mono chars that fit the terminal width at 26px
 
 def colorize(line):
     s = line.strip()
@@ -42,14 +43,23 @@ def main():
     while seg and not seg[-1].strip():
         seg.pop()
 
+    # wrap long lines so nothing is cut off horizontally; keep color of original line
+    wrapped = []  # (text, orig_index)
+    for i, l in enumerate(seg):
+        if len(l) <= WRAP_WIDTH:
+            wrapped.append((l, i))
+        else:
+            for p in textwrap.wrap(l, width=WRAP_WIDTH, break_long_words=True,
+                                   break_on_hyphens=False):
+                wrapped.append((p, i))
     N = int(dur * FPS)
     mono = font(F_MONO_R, 26)
     mono_b = font(F_MONO, 26)
     # typing plan: total chars -> chars per frame
-    full = "\n".join(seg)
-    total_chars = len(full) + len(seg)  # + newlines
-    # reveal over first 78% of duration, hold rest
-    reveal_frames = int(N * 0.78)
+    full = "\n".join(t for t, _ in wrapped)
+    total_chars = len(full) + len(wrapped)  # + newlines
+    # reveal over first 55% of duration (fast start — no empty-feeling opening), hold rest
+    reveal_frames = int(N * 0.55)
     cpf = max(1, total_chars / max(1, reveal_frames))
 
     cmd = ["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
@@ -58,14 +68,14 @@ def main():
            "-pix_fmt", "yuv420p", "-r", str(FPS), out]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
 
-    # precompute char offsets per line
+    # precompute char offsets per (wrapped) line
     line_starts = []
     acc = 0
-    for l in seg:
+    for t, _ in wrapped:
         line_starts.append(acc)
-        acc += len(l) + 1
+        acc += len(t) + 1
 
-    max_visible = 26  # lines visible in terminal area
+    max_visible = 20  # lines that fit the terminal area at 34px line height
     line_h = 34
     term_x0, term_y0 = 110, 150
     term_w, term_h = 1700, 800
@@ -101,12 +111,12 @@ def main():
         n_chars = int(min(1.0, k / max(1, reveal_frames)) * total_chars)
         # find which lines are fully/partially visible
         vis_lines = []
-        for i, l in enumerate(seg):
-            s0 = line_starts[i]
+        for wi, (l, oi) in enumerate(wrapped):
+            s0 = line_starts[wi]
             if n_chars <= s0:
                 break
             shown = min(len(l), n_chars - s0)
-            vis_lines.append((l[:shown], i))
+            vis_lines.append((l[:shown], oi))
         # scroll: keep last max_visible lines
         if len(vis_lines) > max_visible:
             vis_lines = vis_lines[-max_visible:]

@@ -61,18 +61,19 @@ def main():
             d.line([(960 - bw * 0.25, 330 + bw * 0.85), (960 + bw, 330 - bw * 0.75)],
                    fill=(225, 250, 255, int(235 * sp)), width=10, joint="curve")
 
-        # VAULTGUARD
+        # VAULTRY
         lp = ease_out_cubic(fade(k, 18, 54))
         if lp > 0.01:
             y_off = int(24 * (1 - lp))
-            glow_text(img, (960, 620 + y_off), "VAULTGUARD", font(F_BOLD, 110),
+            glow_text(img, (960, 620 + y_off), "VAULTRY", font(F_BOLD, 110),
                       (240, 248, 255), BLUE, 28)
 
         # credit lines, staggered
         lines = [
-            (66, 110, "NEAR Build Beyond Boundaries — Unstoppable DeFi", CYAN_LT, 36),
-            (110, 150, "github.com/rjrajput-web3/vaultguard", WHITE, 38),
-            (158, 198, "Verify every transaction yourself on explorer.testnet.near.org", DIM, 30),
+            (66, 110, "NEAR Build Beyond Boundaries", CYAN_LT, 36),
+            (78, 122, "Unstoppable DeFi  ·  AI Security & Defense  ·  Private AI", CYAN_LT, 30),
+            (122, 162, "github.com/rjrajput-web3/vaultguard", WHITE, 38),
+            (166, 206, "Verify every transaction yourself on explorer.testnet.near.org", DIM, 30),
         ]
         d = ImageDraw.Draw(img)
         for a, b, txt, col, sz in lines:

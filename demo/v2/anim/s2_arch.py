@@ -45,7 +45,7 @@ def main():
         # title
         tp = ease_out_cubic(fade(k, 0, 30))
         if tp > 0.01:
-            d.text((960 + drift_x, 150 + drift_y), "HOW VAULTGUARD PROTECTS EVERY SWAP",
+            d.text((960 + drift_x, 150 + drift_y), "HOW VAULTRY PROTECTS EVERY SWAP",
                    font=font(F_MONO, 34), fill=CYAN_LT + (int(255 * tp),), anchor="mm")
 
         # connectors (draw under nodes), pulses travel continuously

@@ -33,13 +33,14 @@ def font(path, size):
     return _fonts[key]
 
 def gradient_bg(top=NAVY, bottom=NAVY2, wobble=0.0, t=0.0):
-    """Vertical gradient with subtle animated wobble."""
+    """Vertical gradient with subtle animated wobble. Returns (H, W, 3) uint8."""
     y = np.linspace(0, 1, H)[:, None, None]
     if wobble:
         y = y + wobble * math.sin(t * 0.7) * 0.05
     top_a = np.array(top, dtype=np.float32)[None, None, :]
     bot_a = np.array(bottom, dtype=np.float32)[None, None, :]
     img = top_a * (1 - y) + bot_a * y
+    img = np.broadcast_to(img, (H, W, 3))
     return np.clip(img, 0, 255).astype(np.uint8)
 
 def vignette(img, strength=0.35):
