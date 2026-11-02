@@ -1,42 +1,79 @@
-# VAULTRY — Multichain Wallet & Cross-Chain Security
+# VAULTRY — Guardian-Scored Cross-Chain Swaps. Refuses to Swap Blind.
 
 > **Built as VAULTGUARD and renamed VAULTRY for public launch — the underlying
 > NEAR security contract remains `vaultguard.vgdeployer.testnet`.**
+> **100% TESTNET-ONLY.** Every token is valueless. No mainnet, no real funds — by design.
 
 **NEAR Hackathon "Build Beyond Boundaries" · Nov 1–14, 2026**
-**Tracks: Unstoppable DeFi · AI Security & Defense · Privacy & Private AI**
+**Primary track: Unstoppable DeFi · Secondary track: AI Security & Defense**
 
-In April 2026, a single flawed swap function drained **$18.4M** from RHEA. DeFi vaults keep dying
-the same way: blind swaps, no pre-flight checks, no limits. VAULTRY is an independent
-**safety and recovery layer** wrapped around cross-chain execution on the **RHEA X Chain SDK** +
-**NEAR Intents** — protocol-grade protection packaged as a retail user-facing vault.
+In April 2026, a single flawed swap function drained **$18.4M**. DeFi keeps dying the same
+way: blind swaps, no pre-flight checks, no limits. VAULTRY is the fix: **every cross-chain
+swap is risk-scored by the Route Guardian BEFORE anything is signed** — SAFE executes,
+CAUTION needs your explicit per-quote approval, BLOCKED cannot execute. Your Policy Console
+(spending caps, router allow-list, emergency pause) is enforced by the guardian on every
+swap, not just displayed.
 
-> **Never blind swaps.** Every conversion goes through the risk engine first, and the on-chain
-> contract enforces user limits as the final authority — not the UI, not an off-chain server.
+> **Never blind swaps.** The guardian is the gate, not a badge.
 
 🎬 **Demo video:** _(YouTube link added at submission)_
 🔗 **VAULTRY security contract (NEAR testnet):** `vaultguard.vgdeployer.testnet`
 🌐 **Live demo:** https://vaultry.vercel.app
 
-## The 5 features
+## What VAULTRY does that others don't
 
-1. **Pre-flight risk scanner** — every quote is scored 0–100 before signing: router health,
-   slippage, fees, exit cost. Verdicts: SAFE / CAUTION / BLOCKED.
-2. **Smart route guardian** — when the primary router degrades, the guardian falls back to a
-   healthy alternative automatically and leaves a human-readable trail explaining *why* it
-   switched. RHEA-first with NEAR Intents fallback — it keeps working when RHEA's quote
-   endpoint is down.
-3. **User-defined spending limits + asset permissions** — per-transaction and per-day caps,
-   allowed assets and routers, editable in the policy UI.
-4. **Depeg detection + auto vault pause** — stablecoin depeg monitor (Pyth primary, Chainlink
-   fallback, ±2% band, N-tick confirmation); the guardian pauses the vault and alerts instead
-   of executing into a depeg.
-5. **On-chain enforcement + safe recovery** — the NEAR smart contract enforces the per-tx spend
-   cap and the pause flag on-chain. Guardian pause/unpause recovery proven end-to-end.
+1. **Route Guardian (the core)** — every quote is scored 0–100 from live data before signing:
+   intent revalidation, slippage bands, quote freshness, recipient validation, spending caps,
+   emergency pause, router allow-list. Verdicts: **SAFE / CAUTION / BLOCKED**. BLOCKED swaps
+   cannot be overridden. CAUTION needs an explicit checkbox for *that specific quote*.
+2. **Policy Console (your fund-protection controls)** — per-transaction and per-day spending
+   caps, allowed routers, emergency pause. Stored on your device only, enforced by the
+   guardian before every signature. A limit that doesn't enforce is a broken promise —
+   these do (8/8 enforcement proofs pass; see below).
+3. **Executable testnet swaps** — live TidePool Intents quotes → guardian scan → policy
+   gate → your keystore signs the deposit → on-chain settlement with real tx hashes.
+   Pairs with no genuine testnet route are labeled **unsupported**, never faked.
+4. **Multi-chain testnet wallet** — one recovery phrase, per-chain addresses (NEAR testnet
+   live; Solana devnet + Base/Arbitrum Sepolia verified, building out). Keys never leave
+   your browser — encrypted client-side, never transmitted.
+5. **Device-side privacy** — keys, policies, and session data stay in your browser's
+   localStorage. No account, no server-side profile, no tracking.
+
+## Judge walkthrough (reproducible, ~5 minutes, fresh visitor)
+
+> Start in a fresh browser/incognito. Everything below works with zero setup.
+
+**1. See the guardian refuse a blind swap (30s)**
+- Open https://vaultry.vercel.app/security
+- Click **"Run live scan"** → a LIVE TidePool testnet quote is fetched and scored.
+- See: risk score /100, SAFE/CAUTION/BLOCKED verdict, the exact reasons.
+- *Try it:* add `vgdeployer.testnet` to the **Denylist**, re-run → the scan flags it.
+
+**2. Feel the Policy Console enforce (60s)**
+- Open https://vaultry.vercel.app/policy
+- Set **Max spend per tx** to `$0.01`, save.
+- Go to https://vaultry.vercel.app/swap → get a quote → guardian verdict is now
+  **BLOCKED**: "exceeds your per-transaction cap".
+- Flip **Emergency pause** ON → every swap is BLOCKED until you unpause.
+- *This is the differentiator:* the limits aren't UI labels — they gate execution.
+
+**3. Execute a real testnet swap (2 min)**
+- Open https://vaultry.vercel.app/wallet → **Create wallet** → save the 12-word phrase
+  (backup verification required) → fund it via the **testnet faucet** link.
+- Click **"Get test tokens (faucet)"** on https://vaultry.vercel.app/swap for test USDC.
+- On /swap: enter amount → **"Get live quote"** → watch the guardian radar scan →
+  verdict → **"Execute swap"** → unlock with your password → deposit signed →
+  settlement polled → **both tx hashes with explorer links**.
+- *CAUTION path:* raise the amount until slippage triggers CAUTION → the checkbox
+  appears → execution stays disabled until you explicitly acknowledge *that quote*.
+
+**4. Verify on-chain (30s)**
+- Every tx hash links to testnet.nearblocks.io. The security contract
+  `vaultguard.vgdeployer.testnet` is verifiable on the explorer.
 
 ## Proven on-chain (NEAR testnet, real transactions)
 
-`vaultguard.vgdeployer.testnet` — 6 transactions, verdict **PASS**:
+**Spending-guard contract** `vaultguard.vgdeployer.testnet` — 6 transactions, verdict **PASS**:
 
 | # | Action | Result |
 |---|--------|--------|
@@ -47,126 +84,57 @@ the same way: blind swaps, no pre-flight checks, no limits. VAULTRY is an indepe
 | 5 | Guardian `set_paused(false)` | ✅ OK — `FR5g2Xm9fCK63Tj9sG91jGcTLYbpQxdGERo1Vb2nvkfB` |
 | 6 | Withdraw 100 USDC after unpause | ✅ APPROVED — `Goz6hbkT5LyVdKCP7sv4SZqMJ4dE98hqRB3CaHqYgbNy` |
 
-Full transcript: [`docs/spending-limit-demo-transcript-2026-11-02.txt`](docs/spending-limit-demo-transcript-2026-11-02.txt).
-All verifiable on the NEAR testnet explorer.
+**TidePool testnet swap E2E** (2026-11-02, 1 test USDC → ~0.2494 test wNEAR):
 
-## Try it yourself (judge walkthrough)
+| Step | Tx hash |
+|---|---|
+| Deposit (ft_transfer) | `4gXiMecSKJ3DU4hmg3149pX7kFwVZnBxfDUhznvmaWNZ` |
+| Settlement | `2cCAGm9gaXofQQ9wD27WXJnyc8rqaYyh2R4HhjYvwcvo` |
 
-Every step below works on the live deployment right now — do X, see Y.
+**Guardian enforcement proofs** (8/8 PASS, `apps/web/lib/guardian/guardian-proof.ts`):
+normal quote → SAFE · paused → BLOCKED · over per-tx cap → BLOCKED ·
+router disallowed → BLOCKED · extreme slippage → BLOCKED · 1.5% slippage → CAUTION ·
+invalid recipient → BLOCKED · amount mismatch → BLOCKED.
 
-### Track 1 — Unstoppable DeFi (multichain wallet + Intents swaps)
+**Wallet crypto E2E** (all pass): phrase→keypair derivation matches shown address ·
+AES-GCM/PBKDF2-210k encrypt/decrypt roundtrip · wrong password rejected ·
+invalid phrases rejected · import restores the same address.
 
-1. **Open https://vaultry.vercel.app/wallet** → create or import a NEAR testnet wallet.
-   Keys are generated and encrypted client-side — they never leave your browser. Send
-   NEAR and browse real on-chain history from the wallet page.
-2. **Open https://vaultry.vercel.app/faucet** → fund the testnet wallet with 10 NEAR
-   through the official NEAR testnet faucet flow, RPC-confirmed on the page.
-3. **Open https://vaultry.vercel.app/swap** → pick Base USDC → NEAR USDC from the live
-   token registry and fetch a real dry-run quote (NEAR Intents). The risk engine scores
-   it SAFE / CAUTION / BLOCKED *before* anything is signed. No funds move — dry-run only.
-   Honest-availability note: if the 1Click solver is temporarily down (it was on
-   2026-11-02 ~18:23 IST), the page shows the solver's own message verbatim instead of
-   a quote — never a fake number.
-4. **Open https://vaultry.vercel.app/lab** → the Live Testing Lab runs 8 guided steps
-   with per-visitor isolation: connect testnet wallet → faucet-fund → fetch a real
-   quote → run the risk scanner → edit your own isolated policy → call the contract
-   and verify each tx hash on the NEAR explorer.
+## Supporting infra (how to try it)
 
-### Track 2 — AI Security & Defense
-
-5. **Open https://vaultry.vercel.app/security** → the detector suite scores *live* data:
-   suspicious routers, abnormal slippage, implied-liquidity risk, unverified tokens,
-   allowlist/denylist (editable, stored locally), and route-outage detection. The
-   auto-policy engine can session-block or pause on its own verdicts — every verdict
-   is computed from real inputs, failures shown verbatim.
-6. **Open https://vaultry.vercel.app/policy** → set per-transaction and per-day spending
-   caps plus allowed assets and routers. The NEAR smart contract enforces the cap and
-   the pause flag on-chain as the final authority — not the UI.
-7. **Scroll to "On-Chain Proof" on the homepage** → 6 real NEAR testnet transactions
-   (table above): 500 USDC approved, 2000 USDC rejected over the cap, guardian pause,
-   withdraw-while-paused rejected, unpause, 100 USDC approved — each with a clickable
-   NEAR Explorer link. Nothing is mocked.
-
-### Track 3 — Privacy & Private AI
-
-8. **Open https://vaultry.vercel.app/privacy** → the privacy dashboard shows exactly
-   what data each feature uses and where it goes; consent toggles control data sharing
-   per module. Click **"Verify my privacy"** → `analyzeSwapPrivately()` runs on
-   labeled sample data entirely on-device and renders the true audit trail plus the
-   real local risk verdict. Wallet addresses and tx details are stripped/hashed before
-   any AI request — documented minimal-data contracts, fail-closed.
-9. **Click "Verify attestation"** on the same page → the app calls NEAR AI Cloud's
-   public, keyless attestation endpoint and renders each check PASS / FAIL / SKIP with
-   verbatim evidence. Labeled honestly as **Device-side Privacy**: it verifies *their*
-   TEE evidence — our analysis does not run inside their TEE, and we never claim it does.
-
-> **Local reproducibility:** `cd apps/guardian && npx ts-node scripts/route-guardian-demo.ts`
-> attempts a real 1Click dry-run quote and prints the guardian's SAFE / CAUTION / BLOCKED
-> decision trail. No funds move, no key needed. Same solver-availability note as step 3.
+- **Wallet:** `/wallet` — create/import NEAR testnet wallet, encrypted keystore on-device.
+- **Faucets:** NEAR testnet (official helper, integrated in lab) + TidePool test-token
+  faucet (`/api/tidepool/faucet`, rate-limited per account) + "Get test tokens" on /swap.
+- **Testnets:** NEAR testnet (live). Solana devnet, Base Sepolia, Arbitrum Sepolia
+  RPC-verified — see `PHASE1-NETWORK-MATRIX.md` for the full 13-chain matrix.
+- **Live Testing Lab:** `/lab` — 8-step visitor session (wallet → faucet → quote →
+  risk scan → detectors → policy → contract → review), per-visitor isolated.
+- **Policy Console:** `/policy` — device-local, per-visitor.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│  VAULTRY UI (Next.js, TypeScript)            │
-│  pre-flight report card · policy editor ·       │
-│  guardian feed · recovery console               │
-└──────────────┬──────────────────────────────────┘
-               │  quotes + policy checks
-┌──────────────▼──────────────────────────────────┐
-│  Guardian service (Node/TS — never holds funds) │
-│  risk-engine · route-guardian · policy ·        │
-│  oracle-monitor · depeg-flow · rhea-client      │
-└──────┬────────────────────────────┬─────────────┘
-       │ RHEA X Chain SDK           │ NEAR Intents 1Click
-       │ (primary, JWT from env)    │ (fallback, no key needed)
-┌──────▼────────────────────────────▼─────────────┐
-│  NEAR smart contract (near-sdk-js, testnet)     │
-│  paused flag · per-tx spend cap · allowed assets│
-│  — the final authority on every withdrawal      │
-└─────────────────────────────────────────────────┘
+Visitor browser (keys, policy, session — never leave the device)
+    │  live quotes (dry-run)          signed txs (testnet RPC)
+    ▼                                 ▼
+/api/tidepool/* ──→ TidePool sandbox ──→ NEAR testnet
+    │  (quote/execute/status/faucet proxies, testnet-only)
+    ▼
+Route Guardian (checkTestnetSwap) ──→ SAFE/CAUTION/BLOCKED
+    │  reads device-local policy (pause, caps, routers)
+    ▼
+Keystore unlock (password, client-side) → ft_transfer → settlement polling
 ```
 
-## Run it locally
+**Honesty rules (enforced in code):** no fake quotes — unsupported pairs are labeled
+unsupported; no fake balances — empty states say so; RHEA/LI.FI are mainnet-only and
+NOT SUPPORTED (code removed from the active tree; preserved in git history + docs).
+
+## Run locally
 
 ```bash
-# 1. guardian service (RHEA JWT optional — NEAR Intents fallback works without it)
-cd apps/guardian && npm install
-export RHEA_API_JWT="your-rhea-jwt"   # optional
-npx ts-node scripts/dry-run-quote.ts  # read-only quote check, no funds
-npx ts-node scripts/route-guardian-demo.ts
-
-# 2. web UI
-cd apps/web && npm install && npm run dev
-# → http://localhost:3000  (pre-flight report + policy editor at /policy)
-
-# 3. contract (NEAR testnet only)
-cd contracts/vault
-npm install && npm run build          # reproducible wasm build
-# deploy: see contracts/vault/DEPLOY.md (needs a funded testnet account via env)
+cd apps/web && npm install && npm run dev   # http://localhost:3000
+npx tsc --noEmit && npx next build          # must both pass
 ```
 
-No real mainnet funds anywhere in this repo: dry-run quotes + NEAR testnet only.
-Secrets (RHEA JWT, deployer keys) live in env files only — never in code, never committed.
-
-## Originality
-
-100% original work, built Nov 1–2, 2026 for this hackathon. No templates, no tutorial
-redeploys: the risk engine, route-guardian fallback logic, policy engine, depeg flow, and the
-NEAR vault contract were all written for VAULTRY. Repo source matches the deployed
-testnet contract.
-
-## Two independent submissions
-
-Per the official hackathon FAQ, one person may enter up to 2 independent projects. My second,
-fully independent submission is **EscrowPact** — milestone escrow for freelancers
-(contract `escrow.p2deployer.testnet`, repo `near-p2`). The two projects share no code, no
-contracts, and no infrastructure; each README names the other.
-
-## Team
-
-Solo build — **Rohit Rajput** (Web3 researcher & developer, India).
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+Deployed: https://vaultry.vercel.app (Vercel, auto-deploys `main`).
