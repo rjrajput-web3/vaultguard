@@ -369,6 +369,26 @@ function FaucetPageInner() {
               </li>
             ))}
           </ul>
+
+          <h3 style={{ fontSize: 15, letterSpacing: 1, margin: "28px 0 12px" }}>MULTI-CHAIN TESTNET FAUCETS</h3>
+          <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.7 }}>
+            Official faucets for the other VAULTRY testnets. Funding is confirmed only when
+            your wallet shows a live on-chain balance — never from a faucet page alone.
+            Find your addresses on the wallet's Multi-chain tab.
+          </p>
+          <ul style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>
+            {[
+              { name: "Sepolia (Ethereum testnet)", url: "https://sepoliafaucet.com", note: "Free Alchemy account, or no-signup via stakely.io/faucet" },
+              { name: "Base Sepolia", url: "https://www.alchemy.com/faucets/base-sepolia", note: "Free Alchemy account" },
+              { name: "Solana Devnet", url: "https://faucet.solana.com", note: "Request a devnet airdrop for your address" },
+            ].map((f) => (
+              <li key={f.url} style={{ marginBottom: 12 }}>
+                <a href={f.url} target="_blank" rel="noreferrer" style={{ color: "var(--ice)", fontWeight: 600 }}>{f.name} ↗</a>
+                <br />
+                <span style={{ fontSize: 13 }}>{f.note}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </main>
     </div>

@@ -13,6 +13,7 @@ import { KeyPair, type KeyPairString } from "near-api-js";
 import { generateSeedPhrase, parseSeedPhrase } from "near-seed-phrase";
 import { validateMnemonic } from "bip39";
 import { NEAR_TESTNET } from "./network";
+import "../polyfills";
 
 /** Normalize user-entered phrase text (case, spacing) before any crypto use. */
 export function normalizeSeedPhrase(seedPhrase: string): string {

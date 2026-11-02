@@ -46,6 +46,7 @@ import {
   migrateLegacyKeystore,
   type NearNetworkConfig,
 } from "../../lib/wallet/network";
+import MultiChainTab from "./multichain";
 
 /* ---------------- small UI helpers ---------------- */
 
@@ -126,7 +127,7 @@ interface WalletSession {
   secretKey: string; // in memory only — never persisted unencrypted
 }
 
-type MainTab = "dashboard" | "create" | "import";
+type MainTab = "dashboard" | "create" | "import" | "multichain";
 
 /* ---------------- page ---------------- */
 
@@ -165,7 +166,9 @@ function WalletPageInner() {
       </h1>
       <p className="vg-sub" style={{ marginBottom: 22 }}>
         NEAR keys are generated, encrypted and stored on this device only — they are never sent
-        to any server. Testnet only — all tokens are valueless.
+        to any server. Testnet only — all tokens are valueless. The{" "}
+        <b>Multi-chain</b> tab derives one phrase across NEAR Testnet, Sepolia,
+        Base Sepolia and Solana Devnet (BIP44).
       </p>
 
       <div
@@ -186,6 +189,7 @@ function WalletPageInner() {
             ["dashboard", "Dashboard"],
             ["create", "Create wallet"],
             ["import", "Import wallet"],
+            ["multichain", "Multi-chain"],
           ] as [MainTab, string][]
         ).map(([k, t]) => (
           <button
@@ -239,6 +243,7 @@ function WalletPageInner() {
           }}
         />
       )}
+      {tab === "multichain" && <MultiChainTab />}
     </div>
   );
 }
