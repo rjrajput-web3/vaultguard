@@ -31,6 +31,7 @@ import {
 import RouteViz, { type RouteStatus } from "../../components/swap/RouteViz";
 import SwapHistory from "../../components/swap/SwapHistory";
 import RheaSwapPanel from "./rhea-panel";
+import TidePoolPanel from "./tidepool-panel";
 import { connectWallet, getBalance } from "../../components/swap/wallet-stub";
 import { isNearChain, validateChainAddress } from "../../components/swap/validation";
 
@@ -742,6 +743,10 @@ function SwapPageInner() {
             <RheaSwapPanel />
           </div>
         )}
+
+        {/* TidePool TESTNET intents — clearly labeled valueless testnet.
+            Additive: mainnet flows above are untouched. */}
+        {regState === "ready" && <TidePoolPanel />}
       </section>
     </div>
   );
