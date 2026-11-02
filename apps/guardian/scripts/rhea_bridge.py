@@ -16,6 +16,11 @@ Commands (all read-only; the bridge has NO build/submit/execute path):
   to-tokens <chain_id>       -> prints full /api/swap/supported_to_tokens envelope JSON
   quote                      -> reads the SDK-serialized quote body from stdin,
                                 prints the full /api/v2/swap/quote envelope JSON
+  build                      -> reads the SDK-serialized build body from stdin,
+                                prints the full /api/v2/swap/swap envelope JSON
+                                (construction only — no signing, no broadcast)
+  order-status [recordId] [orderId] [router]
+                             -> prints the /api/swap/order-status envelope JSON
 
 Exit 0 on transport success (even when the API envelope carries code != 0 —
 the SDK's ApiClient raises API_ERROR for those itself). Exit non-zero only on
@@ -39,6 +44,19 @@ def main() -> int:
             data = rhea.from_tokens(sys.argv[2])
         elif cmd == "to-tokens":
             data = rhea.to_tokens(sys.argv[2])
+        elif cmd == "build":
+            # Swap build (transaction construction). Fund-safe: the API only
+            # returns the executable payload; signing/broadcast happen in the
+            # caller's wallet adapters, gated by the Route Guardian.
+            body = json.loads(sys.stdin.read() or "{}")
+            data = rhea.build(body)
+        elif cmd == "order-status":
+            def _opt(i):
+                return sys.argv[i] if len(sys.argv) > i and sys.argv[i] != "-" else None
+
+            data = rhea.order_status(
+                record_id=_opt(2), order_id=_opt(3), router=_opt(4)
+            )
         elif cmd == "quote":
             body = json.loads(sys.stdin.read() or "{}")
             data = rhea.quote(

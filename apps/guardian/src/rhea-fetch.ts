@@ -13,17 +13,20 @@
  * connector's dynamic_credentials surrogate and returns the RAW API
  * envelope, which the SDK then normalizes exactly as it would over the wire.
  *
- * Wired (read-only) endpoints:
+ * Wired (fund-safe) endpoints:
  *   GET  /get_chain_prices?chain=<id>
  *   GET  /api/swap/supported_to_tokens?chain=<id>
- *   POST /api/v2/swap/quote
+ *   POST /api/v2/swap/quote            (read-only pricing)
+ *   POST /api/v2/swap/swap             (build: transaction CONSTRUCTION only —
+ *                                       no signing, no broadcast)
+ *   GET  /api/swap/order-status        (settlement tracking, read-only)
  *
- * Execution endpoints (/api/v2/swap/swap [build], /api/swap/order-submit,
- * /api/swap/report, /api/swap/order-status) are DELIBERATELY NOT wired: the
- * guardian service is quote-only by design — it never builds, signs, or
- * submits swaps. Any caller requesting an execution path gets a clear error.
- * Executable quotes in the product flow go through the web wallet UI, the
- * risk engine, the on-chain spending guard, and explicit user approval.
+ * Submission endpoints (/api/swap/order-submit, /api/swap/report) are
+ * DELIBERATELY NOT wired: nothing in this service can finalize a swap.
+ * Signing and broadcast happen ONLY in wallet adapters owned by an explicit,
+ * user-confirmed flow (web UI beforeSign + wallet prompt, or the
+ * scripts/rhea-execute.ts harness with its confirmation gate). Every
+ * executable quote passes the Route Guardian before any signature.
  */
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -134,7 +137,20 @@ export async function rheaFetch(
     if (!body) throw new Error("rheaFetch: empty quote body");
     return jsonResponse(await runBridge(["quote"], body));
   }
+  if (method === "POST" && pathname === "/api/v2/swap/swap") {
+    const body = typeof init?.body === "string" ? init.body : "";
+    if (!body) throw new Error("rheaFetch: empty build body");
+    return jsonResponse(await runBridge(["build"], body));
+  }
+  if (method === "GET" && pathname === "/api/swap/order-status") {
+    const recordId = url.searchParams.get("recordId") ?? "";
+    const orderId = url.searchParams.get("orderId") ?? "";
+    const router = url.searchParams.get("router") ?? "";
+    if (!recordId && !orderId) throw new Error("rheaFetch: order-status needs recordId or orderId");
+    const args = ["order-status", recordId, orderId, router].map((s) => s || "-");
+    return jsonResponse(await runBridge(args));
+  }
   throw new Error(
-    `rheaFetch: endpoint not wired (guardian is quote-only by design): ${method} ${pathname}`,
+    `rheaFetch: endpoint not wired (submission paths stay unwired by design): ${method} ${pathname}`,
   );
 }

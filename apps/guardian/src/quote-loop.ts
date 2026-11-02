@@ -160,7 +160,7 @@ export function rawTokenAddress(r: SwapTokenListItem): string {
   );
 }
 
-async function resolveRheaAssets(
+export async function resolveRheaAssets(
   client: ReturnType<typeof createRheaClient>,
   symbolIn: string,
   symbolOut: string,

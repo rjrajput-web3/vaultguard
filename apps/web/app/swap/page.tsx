@@ -28,6 +28,7 @@ import {
 } from "../../lib/intents/registry";
 import RouteViz, { type RouteStatus } from "../../components/swap/RouteViz";
 import SwapHistory from "../../components/swap/SwapHistory";
+import RheaSwapPanel from "./rhea-panel";
 import { connectWallet, getBalance } from "../../components/swap/wallet-stub";
 import { isNearChain, validateChainAddress } from "../../components/swap/validation";
 
@@ -729,6 +730,14 @@ export default function SwapPage() {
 
               <SwapHistory />
             </div>
+          </div>
+        )}
+
+        {/* RHEA executable swaps — official SDK, real wallets, Route Guardian.
+            Additive: the 1Click dry-run flow above is untouched. */}
+        {regState === "ready" && (
+          <div style={{ marginTop: 40 }}>
+            <RheaSwapPanel />
           </div>
         )}
       </section>

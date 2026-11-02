@@ -15,8 +15,13 @@
  * returns the RAW API envelope, which the SDK normalizes exactly as it would
  * over the wire. No Authorization material ever exists in this process.
  *
- * The client is quote/token-list only: reportMode "disabled", no executors.
- * The guardian never builds, signs, or submits swaps — see rhea-fetch.ts.
+ * The client serves quote/token-list/build/order-status through the shim:
+ * reportMode "disabled", no executors. Build is transaction CONSTRUCTION
+ * only — the guardian's autonomous loop never builds; the explicit harness
+ * (scripts/rhea-execute.ts) may build after the Route Guardian passes and
+ * the operator confirms. Signing/broadcast live only in wallet adapters
+ * behind explicit user confirmation. Submission endpoints stay unwired —
+ * see rhea-fetch.ts.
  */
 import { SwapClient } from "@rhea-finance/cross-chain-aggregation-dex";
 import { rheaFetch } from "./rhea-fetch";
