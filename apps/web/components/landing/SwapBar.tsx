@@ -5,12 +5,6 @@ import RiskGauge from "./RiskGauge";
 import { scoreLiveQuote, VERDICT_COLOR, type RiskVerdict } from "./risk";
 import { useAnimEnabled } from "./useMotion";
 
-const FROM_CHAINS = [
-  { key: "near-testnet", label: "NEAR Testnet", live: true },
-  { key: "1", label: "Ethereum", live: false },
-  { key: "8453", label: "Base", live: false },
-  { key: "501", label: "Solana", live: false },
-];
 const TESTNET_TOKENS = [
   { key: "usdc", label: "test USDC" },
   { key: "wnear", label: "test wNEAR" },
@@ -18,12 +12,6 @@ const TESTNET_TOKENS = [
   { key: "wbtc", label: "test wBTC" },
   { key: "eth", label: "test ETH" },
 ];
-const MAINNET_TOS = [
-  { key: "501", label: "Solana" },
-  { key: "900001", label: "NEAR" },
-  { key: "1", label: "Ethereum" },
-];
-
 type Quote = {
   ok: boolean;
   pair?: string;
@@ -54,8 +42,7 @@ function fmtAmount(raw: string | undefined): string {
 /** Horizontal swap bar: live TidePool testnet quotes + real Route Guardian verdict. */
 export default function SwapBar() {
   const anim = useAnimEnabled();
-  const [fromChain, setFromChain] = useState("near-testnet");
-  const [fromToken, setFromToken] = useState("usdc");
+    const [fromToken, setFromToken] = useState("usdc");
   const [toKey, setToKey] = useState("wnear");
   const [amount, setAmount] = useState("1");
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -63,10 +50,7 @@ export default function SwapBar() {
   const [err, setErr] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isTestnet = fromChain === "near-testnet";
-  const toOptions = isTestnet
-    ? TESTNET_TOKENS.filter((t) => t.key !== fromToken).map((t) => ({ key: t.key, label: t.label }))
-    : MAINNET_TOS;
+  const toOptions = TESTNET_TOKENS.filter((t) => t.key !== fromToken).map((t) => ({ key: t.key, label: t.label }));
 
   const fetchQuote = useCallback(async (amt: string, from: string, to: string) => {
     const n = Number(amt);
@@ -95,7 +79,7 @@ export default function SwapBar() {
 
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
-    if (!isTestnet) {
+    if (!true) {
       setQuote(null);
       setErr(null);
       setLoading(false);
@@ -106,19 +90,17 @@ export default function SwapBar() {
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [amount, fromToken, toKey, isTestnet, fetchQuote]);
+  }, [amount, fromToken, toKey, true, fetchQuote]);
 
   const flip = () => {
-    if (isTestnet) {
+    if (true) {
       const f = fromToken;
       setFromToken(toKey);
       setToKey(f);
     } else {
-      const chainOpt = FROM_CHAINS.find((c) => c.key === toKey);
-      if (chainOpt) {
-        setFromChain(toKey);
-        setToKey(fromChain === "near-testnet" ? "501" : fromChain);
-      }
+      // testnet-only: flip tokens
+      setToKey(fromToken);
+      setFromToken(toKey);
     }
   };
 
@@ -126,12 +108,7 @@ export default function SwapBar() {
   const verdict: RiskVerdict = risk ? risk.verdict : "SAFE";
   const verdictLabel = verdict === "SAFE" ? "Protected" : verdict === "CAUTION" ? "Review needed" : "Blocked";
 
-  const statusLine = !isTestnet ? (
-    <span className="sb-status-warn">
-      <span className="sb-dot" style={{ background: "#fbbf24" }} /> Mainnet quoting needs the RHEA API key —{" "}
-      <a href="/swap">open the full terminal</a> for the honest status.
-    </span>
-  ) : loading ? (
+  const statusLine = loading ? (
     <span className="sb-status-live">
       <span className="sb-dot sb-dot-pulse" /> Fetching live testnet quote…
     </span>
@@ -158,24 +135,16 @@ export default function SwapBar() {
     <div id="live-swap" className="swap-bar glass tilt" data-swap-bar>
       <div className="sb-row">
         <label className="sb-field">
-          <span className="sb-label">From Chain</span>
-          <select value={fromChain} onChange={(e) => { setFromChain(e.target.value); setToKey(e.target.value === "near-testnet" ? "wnear" : "501"); }}>
-            {FROM_CHAINS.map((c) => (
-              <option key={c.key} value={c.key}>{c.label}{c.live ? "" : " · mainnet"}</option>
-            ))}
-          </select>
+          <span className="sb-label">Network</span>
+          <span className="sb-testnet-pill">NEAR Testnet</span>
         </label>
         <label className="sb-field">
           <span className="sb-label">Token</span>
-          {isTestnet ? (
-            <select value={fromToken} onChange={(e) => { setFromToken(e.target.value); if (e.target.value === toKey) setToKey(TESTNET_TOKENS.find((t) => t.key !== e.target.value)!.key); }}>
-              {TESTNET_TOKENS.map((t) => (
-                <option key={t.key} value={t.key}>{t.label}</option>
-              ))}
-            </select>
-          ) : (
-            <select value="usdc" disabled><option value="usdc">USDC</option></select>
-          )}
+          <select value={fromToken} onChange={(e) => { setFromToken(e.target.value); if (e.target.value === toKey) setToKey(TESTNET_TOKENS.find((t) => t.key !== e.target.value)!.key); }}>
+            {TESTNET_TOKENS.map((t) => (
+              <option key={t.key} value={t.key}>{t.label}</option>
+            ))}
+          </select>
         </label>
         <label className="sb-field sb-amount">
           <span className="sb-label">Amount</span>
@@ -206,10 +175,10 @@ export default function SwapBar() {
 
       <div className="sb-status">
         {statusLine}
-        {isTestnet ? <span className="sb-testnet-pill">TESTNET · LIVE</span> : null}
+        {true ? <span className="sb-testnet-pill">TESTNET · LIVE</span> : null}
       </div>
 
-      {isTestnet && quote && risk ? (
+      {true && quote && risk ? (
         <div className="sb-result">
           <div className="sb-quote-path">
             <svg viewBox="0 0 320 64" className="qp-svg" aria-hidden="true">
