@@ -12,6 +12,7 @@
 import { KeyPair, type KeyPairString } from "near-api-js";
 import { generateSeedPhrase, parseSeedPhrase } from "near-seed-phrase";
 import { validateMnemonic } from "bip39";
+import { NEAR_NETWORKS } from "./network";
 
 /** Normalize user-entered phrase text (case, spacing) before any crypto use. */
 export function normalizeSeedPhrase(seedPhrase: string): string {
@@ -71,6 +72,8 @@ function assertBrowser(): void {
 }
 
 const KEYSTORE_KEY = "vaultguard.wallet.keystore.v1";
+/** Default slot = testnet (pre-separation behavior preserved for old callers). */
+const DEFAULT_KEYSTORE_KEY = NEAR_NETWORKS.testnet.keystoreKey;
 const PBKDF2_ITERATIONS = 210_000;
 
 /* ---------------- base64 helpers (browser-safe, no Buffer) ---------------- */
@@ -178,7 +181,8 @@ export async function saveKeystore(
   accountId: string,
   publicKey: string,
   secretKey: string,
-  password: string
+  password: string,
+  storageKey: string = DEFAULT_KEYSTORE_KEY
 ): Promise<KeystoreSaveResult> {
   assertBrowser();
   try {
@@ -190,17 +194,19 @@ export async function saveKeystore(
       crypto: cryptoPayload,
       createdAt: new Date().toISOString(),
     };
-    window.localStorage.setItem(KEYSTORE_KEY, JSON.stringify(store));
+    window.localStorage.setItem(storageKey, JSON.stringify(store));
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to save keystore" };
   }
 }
 
-export function loadKeystoreMeta(): KeystoreLoadResult {
+export function loadKeystoreMeta(
+  storageKey: string = DEFAULT_KEYSTORE_KEY
+): KeystoreLoadResult {
   assertBrowser();
   try {
-    const raw = window.localStorage.getItem(KEYSTORE_KEY);
+    const raw = window.localStorage.getItem(storageKey);
     if (!raw) return { ok: false, error: "No wallet saved on this device yet" };
     const parsed = JSON.parse(raw) as EncryptedKeystore;
     if (parsed.version !== 1 || !parsed.accountId || !parsed.crypto) {
@@ -212,9 +218,12 @@ export function loadKeystoreMeta(): KeystoreLoadResult {
   }
 }
 
-export async function unlockKeystore(password: string): Promise<DecryptResult> {
+export async function unlockKeystore(
+  password: string,
+  storageKey: string = DEFAULT_KEYSTORE_KEY
+): Promise<DecryptResult> {
   assertBrowser();
-  const meta = loadKeystoreMeta();
+  const meta = loadKeystoreMeta(storageKey);
   if (!meta.ok) return { ok: false, error: meta.error };
   try {
     const secretKey = await decryptSecret(password, meta.keystore.crypto);
@@ -224,7 +233,7 @@ export async function unlockKeystore(password: string): Promise<DecryptResult> {
   }
 }
 
-export function clearKeystore(): void {
+export function clearKeystore(storageKey: string = DEFAULT_KEYSTORE_KEY): void {
   assertBrowser();
-  window.localStorage.removeItem(KEYSTORE_KEY);
+  window.localStorage.removeItem(storageKey);
 }

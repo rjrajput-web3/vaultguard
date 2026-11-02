@@ -23,6 +23,7 @@ import {
   unlockKeystore,
   type GeneratedWallet,
 } from "../../lib/wallet/keys";
+import { NEAR_NETWORKS } from "../../lib/wallet/network";
 import {
   createTestnetAccount,
   waitForFunding,
@@ -220,7 +221,7 @@ function LabPageInner() {
     setSession(loadLabSession());
     setAccountName(`vglab-${Math.floor(100000 + Math.random() * 900000)}.testnet`);
     try {
-      const meta = loadKeystoreMeta();
+      const meta = loadKeystoreMeta(NEAR_NETWORKS.testnet.keystoreKey);
       if (meta.ok) setSavedWalletMeta({ accountId: meta.keystore.accountId, createdAt: meta.keystore.createdAt });
     } catch {
       /* no saved wallet — fine */
@@ -248,7 +249,7 @@ function LabPageInner() {
       if (!accountId.endsWith(".testnet")) throw new Error('Account ID must end with ".testnet"');
       if (!password || password.length < 8) throw new Error("Choose a password of at least 8 characters");
       const w = generateWallet();
-      const saved = await saveKeystore(accountId, w.publicKey, w.secretKey, password);
+      const saved = await saveKeystore(accountId, w.publicKey, w.secretKey, password, NEAR_NETWORKS.testnet.keystoreKey);
       if (!saved.ok) throw new Error(saved.error);
       persist(updateLabSession({ accountId, publicKey: w.publicKey }));
       setSavedWalletMeta({ accountId, createdAt: new Date().toISOString() });
@@ -268,7 +269,7 @@ function LabPageInner() {
       const kp = keyPairFromSeedPhrase(seedInput);
       const secretKey = kp.toString();
       const publicKey = kp.getPublicKey().toString();
-      const saved = await saveKeystore(accountId, publicKey, secretKey, password);
+      const saved = await saveKeystore(accountId, publicKey, secretKey, password, NEAR_NETWORKS.testnet.keystoreKey);
       if (!saved.ok) throw new Error(saved.error);
       persist(updateLabSession({ accountId, publicKey }));
       setSavedWalletMeta({ accountId, createdAt: new Date().toISOString() });
@@ -281,9 +282,9 @@ function LabPageInner() {
   async function runUnlockWallet() {
     setStep(1, "running");
     try {
-      const res = await unlockKeystore(password);
+      const res = await unlockKeystore(password, NEAR_NETWORKS.testnet.keystoreKey);
       if (!res.ok) throw new Error(res.error);
-      const meta = loadKeystoreMeta();
+      const meta = loadKeystoreMeta(NEAR_NETWORKS.testnet.keystoreKey);
       if (!meta.ok) throw new Error(meta.error);
       persist(updateLabSession({ accountId: meta.keystore.accountId, publicKey: meta.keystore.publicKey }));
       setStep(1, "success");

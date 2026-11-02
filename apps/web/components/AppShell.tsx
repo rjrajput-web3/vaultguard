@@ -10,6 +10,7 @@
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import BrandMark from "./BrandMark";
+import RheaStatusPill from "./RheaStatusPill";
 
 interface NavItem {
   href: string;
@@ -140,7 +141,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <div className="v-main">
         <div className="v-topbar">
           <button className="v-menu-btn" onClick={() => setOpen(!open)} aria-label="Menu">☰</button>
-          <div className="v-status"><span className="v-dot" /> Mainnet · RHEA live</div>
+          <RheaStatusPill />
         </div>
         <div className="v-content">{children}</div>
       </div>

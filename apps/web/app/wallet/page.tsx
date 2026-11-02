@@ -28,18 +28,25 @@ import {
 } from "../../lib/wallet/keys";
 import {
   createTestnetConnection,
+  createConnection,
   getNearBalance,
   getSignerAccount,
   estimateSendFee,
   sendNear,
   getRecentTransactions,
   isValidAccountId,
-  NEAR_EXPLORER,
+  verifyKeyOnAccount,
   type TestnetConnection,
   type NearBalance,
   type FeeEstimate,
   type TxRecord,
 } from "../../lib/wallet/near";
+import {
+  NEAR_NETWORKS,
+  migrateLegacyKeystore,
+  type NearNetwork,
+  type NearNetworkConfig,
+} from "../../lib/wallet/network";
 import {
   connectEvm,
   getEvmBalance,
@@ -139,19 +146,34 @@ type ConnectTab = "evm" | "solana";
 
 function WalletPageInner() {
   const [tab, setTab] = useState<MainTab>("dashboard");
+  const [network, setNetwork] = useState<NearNetwork>("testnet");
   const [conn, setConn] = useState<TestnetConnection | null>(null);
   const [session, setSession] = useState<WalletSession | null>(null);
   const [savedAccountId, setSavedAccountId] = useState<string | null>(null);
 
+  const cfg: NearNetworkConfig = NEAR_NETWORKS[network];
+
   useEffect(() => {
-    setConn(createTestnetConnection());
+    migrateLegacyKeystore();
+  }, []);
+
+  useEffect(() => {
+    setConn(createConnection(network));
+    setSession(null); // sessions never cross networks
     try {
-      const meta = loadKeystoreMeta();
+      const meta = loadKeystoreMeta(cfg.keystoreKey);
       if (meta.ok) setSavedAccountId(meta.keystore.accountId);
+      else setSavedAccountId(null);
     } catch {
       /* client-only module; ignore on SSR pass */
     }
-  }, []);
+  }, [network]);
+
+  function switchNetwork(n: NearNetwork) {
+    if (n === network) return;
+    setNetwork(n);
+    setTab("dashboard");
+  }
 
   return (
     <div className="vg-wrap" style={{ paddingTop: 100, paddingBottom: 60, maxWidth: 880 }}>
@@ -163,6 +185,55 @@ function WalletPageInner() {
         NEAR keys are generated, encrypted and stored on this device only — they are never sent
         to any server. Ethereum and Solana work through your own external wallet extensions.
       </p>
+
+      {/* Network selector — testnet and mainnet state never mix. */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: 13, color: "#93a0b8", fontWeight: 700, letterSpacing: 1 }}>NETWORK</span>
+        {(
+          [
+            ["testnet", "NEAR Testnet"],
+            ["mainnet", "NEAR Mainnet"],
+          ] as [NearNetwork, string][]
+        ).map(([k, t]) => (
+          <button
+            key={k}
+            className={network === k ? "vg-btn" : "vg-btn vg-btn-ghost"}
+            onClick={() => switchNetwork(k)}
+            style={
+              k === "mainnet"
+                ? { borderColor: network === "mainnet" ? "rgba(239,68,68,0.6)" : undefined }
+                : undefined
+            }
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      {cfg.isMainnet ? (
+        <div
+          style={{
+            background: "rgba(239,68,68,0.10)",
+            border: "1px solid rgba(239,68,68,0.45)",
+            borderRadius: 10,
+            color: "#fca5a5",
+            padding: "10px 14px",
+            fontSize: 13.5,
+            marginBottom: 18,
+          }}
+          role="alert"
+        >
+          <b>MAINNET — real funds.</b> Every transaction here moves real NEAR. Double-check
+          addresses and amounts; nothing here is a test.
+        </div>
+      ) : (
+        <div style={{ ...hint, marginBottom: 18 }}>
+          Testnet — valueless tokens. Get free test NEAR from the{" "}
+          <a href={cfg.faucetUrl} target="_blank" rel="noreferrer" style={{ color: "#22d3ee" }}>
+            testnet faucet ↗
+          </a>
+          .
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 10, marginBottom: 24, flexWrap: "wrap" }}>
         {(
@@ -186,12 +257,13 @@ function WalletPageInner() {
       {tab === "dashboard" && (
         <Dashboard
           conn={conn}
+          cfg={cfg}
           session={session}
           savedAccountId={savedAccountId}
           onUnlock={(s) => setSession(s)}
           onForget={() => {
             try {
-              clearKeystore();
+              clearKeystore(cfg.keystoreKey);
             } catch {
               /* noop */
             }
@@ -203,6 +275,8 @@ function WalletPageInner() {
       )}
       {tab === "create" && conn && (
         <CreateFlow
+          conn={conn}
+          cfg={cfg}
           onDone={(s) => {
             setSession(s);
             setSavedAccountId(s.accountId);
@@ -212,6 +286,8 @@ function WalletPageInner() {
       )}
       {tab === "import" && conn && (
         <ImportFlow
+          conn={conn}
+          cfg={cfg}
           onDone={(s) => {
             setSession(s);
             setSavedAccountId(s.accountId);
@@ -228,13 +304,14 @@ function WalletPageInner() {
 
 function Dashboard(props: {
   conn: TestnetConnection | null;
+  cfg: NearNetworkConfig;
   session: WalletSession | null;
   savedAccountId: string | null;
   onUnlock: (s: WalletSession) => void;
   onForget: () => void;
   goTo: (t: MainTab) => void;
 }) {
-  const { conn, session } = props;
+  const { conn, cfg, session } = props;
   const [password, setPassword] = useState("");
   const [unlockError, setUnlockError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
@@ -271,7 +348,7 @@ function Dashboard(props: {
 
   const refreshHistory = async () => {
     if (!session) return;
-    const r = await getRecentTransactions(session.accountId, 25);
+    const r = await getRecentTransactions(session.accountId, 25, cfg.nearblocksApi);
     if (r.status === "ok") {
       setHistory(r.txs);
       setHistoryError(null);
@@ -332,8 +409,11 @@ function Dashboard(props: {
           <>
             <h3 style={{ margin: "0 0 6px" }}>No wallet on this device yet</h3>
             <p style={hint}>
-              Create a new NEAR testnet wallet (keys generated + encrypted locally) or import an
-              existing one. Nothing is created on-chain until you fund an account.
+              Create a new {cfg.label} wallet (keys generated + encrypted locally) or import an
+              existing one.{" "}
+              {cfg.isMainnet
+                ? "Mainnet accounts must already exist on-chain — creating keys here does not fund an account."
+                : "Nothing is created on-chain until you fund an account."}
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
               <button className="vg-btn" onClick={() => props.goTo("create")}>Create wallet</button>
@@ -349,12 +429,12 @@ function Dashboard(props: {
     setUnlocking(true);
     setUnlockError(null);
     try {
-      const r = await unlockKeystore(password);
+      const r = await unlockKeystore(password, cfg.keystoreKey);
       if (!r.ok) {
         setUnlockError(r.error);
         return;
       }
-      const meta = loadKeystoreMeta();
+      const meta = loadKeystoreMeta(cfg.keystoreKey);
       const accountId = meta.ok ? meta.keystore.accountId : "";
       props.onUnlock({ accountId, secretKey: r.secretKey });
       setPassword("");
@@ -380,7 +460,7 @@ function Dashboard(props: {
       return;
     }
     try {
-      setFee(await estimateSendFee());
+      setFee(await estimateSendFee(cfg.rpcUrl));
       setConfirming(true);
     } catch (e) {
       setFeeError(e instanceof Error ? e.message : "Could not estimate the network fee");
@@ -418,7 +498,7 @@ function Dashboard(props: {
       <div style={card}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <div style={label}>NEAR TESTNET ACCOUNT</div>
+            <div style={label}>{cfg.label.toUpperCase()} ACCOUNT</div>
             <div style={{ fontFamily: "monospace", fontSize: 19, fontWeight: 700, wordBreak: "break-all" }}>
               {session.accountId}
             </div>
@@ -443,10 +523,10 @@ function Dashboard(props: {
             ↻ Refresh
           </button>
         </div>
-        {balanceError && balanceError.includes("not found") && (
+        {balanceError && balanceError.includes("not found") && !cfg.isMainnet && (
           <div style={{ ...hint, marginTop: 10 }}>
             New account? Fund it on the{" "}
-            <a href="https://near-faucet.io" target="_blank" rel="noreferrer" style={{ color: "#22d3ee" }}>
+            <a href={cfg.faucetUrl} target="_blank" rel="noreferrer" style={{ color: "#22d3ee" }}>
               NEAR testnet faucet ↗
             </a>{" "}
             (free testnet tokens), then refresh.
@@ -454,12 +534,12 @@ function Dashboard(props: {
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
         {/* RECEIVE */}
         <div style={card}>
           <h3 style={{ margin: "0 0 12px" }}>Receive</h3>
           <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 14px" }}>
-            <canvas ref={qrRef} style={{ borderRadius: 8, background: "#fff", padding: 8 }} />
+            <canvas ref={qrRef} style={{ borderRadius: 8, background: "#fff", padding: 8, maxWidth: "100%" }} />
           </div>
           <div style={{ fontFamily: "monospace", fontSize: 13, wordBreak: "break-all", color: "#93a0b8", marginBottom: 10 }}>
             {session.accountId}
@@ -469,11 +549,13 @@ function Dashboard(props: {
 
         {/* SEND */}
         <div style={card}>
-          <h3 style={{ margin: "0 0 12px" }}>Send NEAR (testnet)</h3>
+          <h3 style={{ margin: "0 0 12px" }}>
+            Send NEAR {cfg.isMainnet ? <span style={{ color: "#fca5a5" }}>(MAINNET — real funds)</span> : "(testnet)"}
+          </h3>
           {!confirming ? (
             <>
               <Field title="Destination account">
-                <input style={input} value={sendTo} onChange={(e) => setSendTo(e.target.value)} placeholder="receiver.testnet" />
+                <input style={input} value={sendTo} onChange={(e) => setSendTo(e.target.value)} placeholder={cfg.isMainnet ? "receiver.near" : "receiver.testnet"} />
               </Field>
               <Field title="Amount (NEAR)">
                 <input style={input} value={sendAmount} onChange={(e) => setSendAmount(e.target.value)} placeholder="0.5" inputMode="decimal" />
@@ -485,7 +567,7 @@ function Dashboard(props: {
                 <div style={okBox}>
                   ✓ Sent. Transaction hash:
                   <div style={{ fontFamily: "monospace", fontSize: 12, wordBreak: "break-all", marginTop: 6 }}>{txHash}</div>
-                  <a href={`${NEAR_EXPLORER}/transactions/${txHash}`} target="_blank" rel="noreferrer" style={{ color: "#22d3ee", fontSize: 13 }}>
+                  <a href={cfg.explorerTxUrl(txHash)} target="_blank" rel="noreferrer" style={{ color: "#22d3ee", fontSize: 13 }}>
                     Verify on explorer ↗
                   </a>
                 </div>
@@ -494,7 +576,7 @@ function Dashboard(props: {
           ) : (
             <>
               <div style={{ ...hint, marginBottom: 14, color: "#e9eef7" }}>
-                <b>Review before signing.</b> This builds a real on-chain transfer on NEAR testnet.
+                <b>Review before signing.</b> This builds a real on-chain transfer on {cfg.label}.{cfg.isMainnet ? " Real NEAR will move — this cannot be undone." : ""}
               </div>
               <div className="vg-kv" style={{ marginBottom: 16 }}>
                 <div><dt>From</dt><dd style={{ fontFamily: "monospace", fontSize: 13 }}>{session.accountId}</dd></div>
@@ -562,7 +644,7 @@ function Dashboard(props: {
                 <div style={{ color: "#5b6a84", marginTop: 4 }}>
                   {t.signerId} → {t.receiverId}
                 </div>
-                <a href={`${NEAR_EXPLORER}/transactions/${t.hash}`} target="_blank" rel="noreferrer" style={{ color: "#22d3ee", fontSize: 12 }}>
+                <a href={cfg.explorerTxUrl(t.hash)} target="_blank" rel="noreferrer" style={{ color: "#22d3ee", fontSize: 12 }}>
                   Verify on explorer ↗
                 </a>
               </div>
@@ -588,10 +670,15 @@ function Dashboard(props: {
 
 /* ================= CREATE FLOW ================= */
 
-function CreateFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
+function CreateFlow({ conn, cfg, onDone }: { conn: TestnetConnection; cfg: NearNetworkConfig; onDone: (s: WalletSession) => void }) {
   const [accountId, setAccountId] = useState("");
   const [wallet, setWallet] = useState<GeneratedWallet | null>(null);
   const [backedUp, setBackedUp] = useState(false);
+  // Backup verification: user must re-enter 3 random words from the phrase.
+  const [verifyIdx, setVerifyIdx] = useState<number[]>([]);
+  const [verifyWords, setVerifyWords] = useState<string[]>(["", "", ""]);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -604,12 +691,37 @@ function CreateFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
       setError(`"${id || "(empty)"}" is not a valid NEAR account ID (use lowercase letters, digits, . - _)`);
       return;
     }
+    if (cfg.isMainnet && id.endsWith(".testnet")) {
+      setError("That is a testnet-style account ID — mainnet accounts end in .near (or a valid subdomain).");
+      return;
+    }
     try {
-      setWallet(generateWallet());
+      const w = generateWallet();
+      setWallet(w);
       setBackedUp(false);
+      setVerified(false);
+      setVerifyError(null);
+      setVerifyWords(["", "", ""]);
+      // Pick 3 distinct random word positions for the backup check.
+      const idx = new Set<number>();
+      while (idx.size < 3) idx.add(Math.floor(Math.random() * 12));
+      setVerifyIdx([...idx].sort((a, b) => a - b));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Key generation failed");
     }
+  }
+
+  function checkBackupWords() {
+    if (!wallet) return;
+    setVerifyError(null);
+    const words = wallet.seedPhrase.split(" ");
+    const bad = verifyIdx.findIndex((wi, k) => verifyWords[k].trim().toLowerCase() !== words[wi]);
+    if (bad >= 0) {
+      setVerifyError(`Word #${verifyIdx[bad] + 1} does not match — check your backup and try again.`);
+      setVerified(false);
+      return;
+    }
+    setVerified(true);
   }
 
   async function save() {
@@ -617,6 +729,10 @@ function CreateFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
     if (!wallet) return;
     if (!backedUp) {
       setError("Confirm you have backed up the recovery phrase before continuing");
+      return;
+    }
+    if (!verified) {
+      setError("Verify your backup by entering the 3 requested words first");
       return;
     }
     if (password.length < 8) {
@@ -629,7 +745,7 @@ function CreateFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
     }
     setSaving(true);
     try {
-      const r = await saveKeystore(accountId.trim(), wallet.publicKey, wallet.secretKey, password);
+      const r = await saveKeystore(accountId.trim(), wallet.publicKey, wallet.secretKey, password, cfg.keystoreKey);
       if (!r.ok) {
         setError(r.error);
         return;
@@ -645,17 +761,27 @@ function CreateFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
   return (
     <div>
       <div style={card}>
-        <h3 style={{ margin: "0 0 6px" }}>1 · Choose your testnet account ID</h3>
+        <h3 style={{ margin: "0 0 6px" }}>1 · Choose your {cfg.label} account ID</h3>
         <p style={hint}>
-          This creates the <b>keys</b> on this device. The account itself becomes usable once it
-          exists on NEAR testnet (e.g. funded via the{" "}
-          <a href="https://near-faucet.io" target="_blank" rel="noreferrer" style={{ color: "#22d3ee" }}>
-            testnet faucet ↗
-          </a>
-          ).
+          This creates the <b>keys</b> on this device.{" "}
+          {cfg.isMainnet ? (
+            <>
+              The account itself must <b>already exist on NEAR mainnet</b> with real NEAR to be
+              usable — generating keys here does not create or fund it.
+            </>
+          ) : (
+            <>
+              The account itself becomes usable once it exists on NEAR testnet (e.g. funded via
+              the{" "}
+              <a href={cfg.faucetUrl} target="_blank" rel="noreferrer" style={{ color: "#22d3ee" }}>
+                testnet faucet ↗
+              </a>
+              ).
+            </>
+          )}
         </p>
-        <Field title="Testnet account ID">
-          <input style={input} value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder="myname.testnet" disabled={!!wallet} />
+        <Field title={`${cfg.label} account ID`}>
+          <input style={input} value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder={cfg.accountHint} disabled={!!wallet} />
         </Field>
         {!wallet && (
           <button className="vg-btn" onClick={generate}>
@@ -670,7 +796,7 @@ function CreateFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
           <h3 style={{ margin: "0 0 6px" }}>2 · Back up your recovery phrase</h3>
           <p style={hint}>
             Write these 12 words down <b>in order</b> and store them somewhere safe. Anyone with
-            them controls this account. VaultGuard never sees or stores them anywhere but this
+            them controls this account. VAULTRY never sees or stores them anywhere but this
             device.
           </p>
           <div
@@ -691,6 +817,8 @@ function CreateFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
                   padding: "9px 10px",
                   fontFamily: "monospace",
                   fontSize: 15,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
               >
                 <span style={{ color: "#5b6a84", marginRight: 8, fontSize: 12 }}>{i + 1}</span>
@@ -700,8 +828,44 @@ function CreateFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
             <CopyButton text={wallet.seedPhrase} />
-            <span style={hint}>Public key: <span style={{ fontFamily: "monospace" }}>{wallet.publicKey}</span></span>
+            <span style={{ ...hint, wordBreak: "break-all" }}>Public key: <span style={{ fontFamily: "monospace" }}>{wallet.publicKey}</span></span>
           </div>
+
+          {/* Backup verification — prove the phrase was actually written down. */}
+          <div style={{ border: "1px solid rgba(125,211,252,0.2)", borderRadius: 10, padding: 14, marginBottom: 18 }}>
+            <h4 style={{ margin: "0 0 8px", fontSize: 15 }}>Verify your backup</h4>
+            <p style={hint}>
+              Enter {verifyIdx.length} words from your written backup to prove it is correct:
+            </p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
+              {verifyIdx.map((wi, k) => (
+                <div key={wi} style={{ flex: "1 1 120px" }}>
+                  <label style={label}>Word #{wi + 1}</label>
+                  <input
+                    style={input}
+                    value={verifyWords[k]}
+                    onChange={(e) => {
+                      const next = [...verifyWords];
+                      next[k] = e.target.value;
+                      setVerifyWords(next);
+                      setVerified(false);
+                    }}
+                    placeholder={`word ${wi + 1}`}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
+              <button className="vg-btn vg-btn-ghost" onClick={checkBackupWords}>
+                Verify words
+              </button>
+              {verified && <span style={{ color: "#86efac", fontSize: 14 }}>✓ Backup verified</span>}
+            </div>
+            {verifyError && <ErrorBox message={verifyError} />}
+          </div>
+
           <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 18, cursor: "pointer" }}>
             <input
               type="checkbox"
@@ -711,14 +875,14 @@ function CreateFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
             />
             <span style={{ fontSize: 14 }}>
               <b>I have backed up my 12-word recovery phrase.</b> I understand that losing it means
-              losing access to this account, and no one — not even VaultGuard — can recover it.
+              losing access to this account, and no one — not even VAULTRY — can recover it.
             </span>
           </label>
 
           <h3 style={{ margin: "0 0 6px" }}>3 · Encrypt with a password</h3>
           <p style={hint}>
             The private key is encrypted with this password (AES-GCM, PBKDF2 key derivation)
-            before it is stored in this browser. VaultGuard cannot decrypt it without the password.
+            before it is stored in this browser. VAULTRY cannot decrypt it without the password.
           </p>
           <Field title="Password (min. 8 characters)">
             <input type="password" style={input} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
@@ -726,7 +890,7 @@ function CreateFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
           <Field title="Confirm password">
             <input type="password" style={input} value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" />
           </Field>
-          <button className="vg-btn" disabled={saving || !backedUp} onClick={save}>
+          <button className="vg-btn" disabled={saving || !backedUp || !verified} onClick={save}>
             {saving ? "Encrypting & saving…" : "Encrypt & save wallet"}
           </button>
         </div>
@@ -739,17 +903,20 @@ function CreateFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
 
 type ImportKind = "phrase" | "key";
 
-function ImportFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
+function ImportFlow({ conn, cfg, onDone }: { conn: TestnetConnection; cfg: NearNetworkConfig; onDone: (s: WalletSession) => void }) {
   const [kind, setKind] = useState<ImportKind>("phrase");
   const [accountId, setAccountId] = useState("");
   const [secret, setSecret] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   async function doImport() {
     setError(null);
+    setNotice(null);
     const id = accountId.trim();
     if (!isValidAccountId(id)) {
       setError(`"${id || "(empty)"}" is not a valid NEAR account ID`);
@@ -771,7 +938,28 @@ function ImportFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
           : keyPairFromSecretKey(secret);
       const secretKey = keyPair.toString();
       const publicKey = keyPair.getPublicKey().toString();
-      const r = await saveKeystore(id, publicKey, secretKey, password);
+      // On-chain check: does this key actually control the account?
+      // A valid phrase for the WRONG account must fail loudly here.
+      setVerifying(true);
+      try {
+        const v = await verifyKeyOnAccount(conn.provider, id, publicKey);
+        if (!v.ok) {
+          if (v.notFound) {
+            setNotice(
+              `Note: "${id}" does not exist on ${cfg.label} yet — the key was imported anyway. ` +
+              (cfg.isMainnet
+                ? "The account must be created/funded with real NEAR before it can transact."
+                : "Fund it via the testnet faucet to activate it.")
+            );
+          } else {
+            setError(v.error);
+            return;
+          }
+        }
+      } finally {
+        setVerifying(false);
+      }
+      const r = await saveKeystore(id, publicKey, secretKey, password, cfg.keystoreKey);
       if (!r.ok) {
         setError(r.error);
         return;
@@ -787,10 +975,11 @@ function ImportFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
 
   return (
     <div style={card}>
-      <h3 style={{ margin: "0 0 6px" }}>Import an existing NEAR testnet wallet</h3>
+      <h3 style={{ margin: "0 0 6px" }}>Import an existing {cfg.label} wallet</h3>
       <p style={hint}>
         Your phrase or private key is parsed and encrypted <b>on this device only</b> — it is never
-        sent to any server. After import it is cleared from this form.
+        sent to any server. After import it is cleared from this form. The key is verified
+        against the account on-chain before anything is saved.
       </p>
       <div style={{ display: "flex", gap: 10, margin: "14px 0 18px" }}>
         {(
@@ -804,8 +993,8 @@ function ImportFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
           </button>
         ))}
       </div>
-      <Field title="Testnet account ID">
-        <input style={input} value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder="myname.testnet" />
+      <Field title={`${cfg.label} account ID`}>
+        <input style={input} value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder={cfg.accountHint} />
       </Field>
       <Field title={kind === "phrase" ? "12-word recovery phrase" : "Private key (ed25519:…)"}>
         <textarea
@@ -823,9 +1012,10 @@ function ImportFlow({ onDone }: { onDone: (s: WalletSession) => void }) {
       <Field title="Confirm password">
         <input type="password" style={input} value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" />
       </Field>
-      <button className="vg-btn" disabled={saving || !secret.trim()} onClick={doImport}>
-        {saving ? "Encrypting & importing…" : "Encrypt & import"}
+      <button className="vg-btn" disabled={saving || verifying || !secret.trim()} onClick={doImport}>
+        {verifying ? "Verifying key on-chain…" : saving ? "Encrypting & importing…" : "Verify & import"}
       </button>
+      {notice && <div style={okBox}>{notice}</div>}
       {error && <ErrorBox message={error} />}
     </div>
   );

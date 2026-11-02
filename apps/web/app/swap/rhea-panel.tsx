@@ -43,6 +43,7 @@ import {
   loadKeystoreMeta,
   unlockKeystore,
 } from "../../lib/wallet/keys";
+import { NEAR_NETWORKS } from "../../lib/wallet/network";
 import type {
   ChainRef,
   SwapClient,
@@ -313,7 +314,7 @@ export default function RheaSwapPanel() {
   // Surface a stored keystore account id (no typing needed).
   useEffect(() => {
     try {
-      const meta = loadKeystoreMeta();
+      const meta = loadKeystoreMeta(NEAR_NETWORKS.mainnet.keystoreKey);
       if (meta.ok) setNearAccountId(meta.keystore.accountId);
     } catch {
       /* no keystore — user is told on the panel */
@@ -332,7 +333,7 @@ export default function RheaSwapPanel() {
       );
       return;
     }
-    const r = await unlockKeystore(nearPassword);
+    const r = await unlockKeystore(nearPassword, NEAR_NETWORKS.mainnet.keystoreKey);
     if (!r.ok) {
       setNearNote(`unlock failed: ${r.error}`);
       return;
@@ -453,7 +454,7 @@ export default function RheaSwapPanel() {
           throw new Error("Unlock your NEAR keystore account first.");
         }
         const nearExecutor = createKeystoreNearExecutor(async () => {
-          const r = await unlockKeystore(nearPassword);
+          const r = await unlockKeystore(nearPassword, NEAR_NETWORKS.mainnet.keystoreKey);
           if (!r.ok) throw new Error(`keystore unlock failed: ${r.error}`);
           const provider = new JsonRpcProvider({
             url: "https://rpc.mainnet.near.org",

@@ -17,6 +17,7 @@ import {
 } from "near-api-js";
 import { parseSeedPhrase } from "near-seed-phrase";
 import { validateMnemonic } from "bip39";
+import { NEAR_NETWORKS, type NearNetwork } from "./network";
 
 export const NEAR_TESTNET_RPC = "https://rpc.testnet.fastnear.com";
 export const NEAR_NETWORK_ID = "testnet";
@@ -72,9 +73,60 @@ export function isValidAccountId(accountId: string): boolean {
 
 /* ---------------- connection ---------------- */
 
+/** Open a read-only-capable NEAR connection for the given network. Stateless — no keystore. */
+export function createConnection(network: NearNetwork): TestnetConnection {
+  return { provider: new JsonRpcProvider({ url: NEAR_NETWORKS[network].rpcUrl }) };
+}
+
 /** Open a read-only-capable NEAR testnet connection. Stateless — no keystore. */
 export function createTestnetConnection(): TestnetConnection {
-  return { provider: new JsonRpcProvider({ url: NEAR_TESTNET_RPC }) };
+  return createConnection("testnet");
+}
+
+/**
+ * Verify that a public key is registered as a full-access key on an account.
+ * Used at import time so a wrong phrase/key for an account fails LOUDLY
+ * instead of silently importing a key that cannot sign.
+ *
+ * Returns { ok:true } when the key is on the account.
+ * Returns { ok:false, notFound:true } when the ACCOUNT does not exist on-chain
+ *   (fresh account — import is still allowed, it becomes usable once funded).
+ * Returns { ok:false, error } when the account exists but the key is not on it.
+ */
+export async function verifyKeyOnAccount(
+  provider: JsonRpcProvider,
+  accountId: string,
+  publicKey: string
+): Promise<{ ok: true } | { ok: false; notFound?: boolean; error: string }> {
+  const id = accountId.trim();
+  try {
+    await provider.viewAccount({ accountId: id, blockQuery: { finality: "optimistic" } });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/does not exist/i.test(msg)) {
+      return { ok: false, notFound: true, error: "Account does not exist on-chain yet" };
+    }
+    return { ok: false, error: `Could not check the account on-chain: ${msg.slice(0, 120)}` };
+  }
+  try {
+    await provider.query({
+      request_type: "view_access_key",
+      account_id: id,
+      public_key: publicKey,
+      finality: "final",
+    });
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/does not exist|unknown access key/i.test(msg)) {
+      return {
+        ok: false,
+        error:
+          "This key is NOT registered on that account — the phrase/key does not control it. Check the account ID and the recovery phrase.",
+      };
+    }
+    return { ok: false, error: `Key verification failed: ${msg.slice(0, 120)}` };
+  }
 }
 
 /**
@@ -139,11 +191,11 @@ export async function getNearBalance(
 
 /* ---------------- fees ---------------- */
 
-/** Real gas price from testnet RPC; returns a conservative fee upper bound for a transfer. */
-export async function estimateSendFee(): Promise<FeeEstimate> {
+/** Real gas price from the network RPC; returns a conservative fee upper bound for a transfer. */
+export async function estimateSendFee(rpcUrl: string = NEAR_TESTNET_RPC): Promise<FeeEstimate> {
   let res: Response;
   try {
-    res = await fetch(NEAR_TESTNET_RPC, {
+    res = await fetch(rpcUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "gas_price", params: [null] }),
@@ -217,11 +269,12 @@ function extractTxHash(outcome: unknown): string {
  */
 export async function getRecentTransactions(
   accountId: string,
-  limit = 25
+  limit = 25,
+  nearblocksApi: string = "https://testnet.nearblocks.io"
 ): Promise<TxHistoryResult> {
   const id = accountId.trim();
   if (!isValidAccountId(id)) throw new Error(`"${id}" is not a valid NEAR account ID`);
-  const url = `https://testnet.nearblocks.io/api/v1/account/${encodeURIComponent(
+  const url = `${nearblocksApi}/api/v1/account/${encodeURIComponent(
     id
   )}/txns?page=1&per_page=${Math.min(Math.max(limit, 1), 100)}`;
   try {
