@@ -2,6 +2,8 @@ node_modules/
 .next/
 dist/
 build/
+# ...but NOT the /api/rhea/build API route (the dir name collides with the pattern above)
+!apps/web/app/api/rhea/build/
 *.log
 .env
 .DS_Store
