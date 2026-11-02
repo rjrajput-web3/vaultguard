@@ -9,8 +9,11 @@
  * scored by the risk engine. The loop NEVER executes a swap — it only
  * produces risk reports for the depeg flow and the demo UI.
  */
-import type { Quote } from "@rhea-finance/cross-chain-aggregation-dex";
-import { createRheaClient, getRheaJwt } from "./rhea-client";
+import type {
+  Quote,
+  SwapTokenListItem,
+} from "@rhea-finance/cross-chain-aggregation-dex";
+import { createRheaClient } from "./rhea-client";
 import {
   scoreRisk,
   type NormalizedQuote,
@@ -94,6 +97,69 @@ function registryId(apiChain: string): number {
   return REGISTRY_IDS[apiChain] ?? Number(apiChain);
 }
 
+/**
+ * Pick the destination token from the SDK's normalized cross-chain list.
+ *
+ * The SDK normalizes every row's `address` to the API's internal assetId
+ * (e.g. "nep141:base-0x...omft.near"), which the quote endpoint does NOT
+ * accept as tokenIn/tokenOut — it wants the RAW on-chain address. Each row
+ * therefore carries the raw contract in `contractAddress` (or in `raw`),
+ * which is what we actually send. Selection itself is by the row's `chain`
+ * field, which the SDK sets to the destination chain ("solana", "near",
+ * "8453", ...). No address-format guessing: ambiguity is an error, not a
+ * fallback.
+ */
+export function pickDestinationToken(
+  pool: SwapTokenListItem[],
+  toChain: string,
+  /** Raw addresses the API itself lists as supported cross-chain destinations. */
+  supported?: Set<string>,
+): SwapTokenListItem | undefined {
+  const chainMatch = pool.filter(
+    (r) => String(r.chain).toLowerCase() === toChain.toLowerCase(),
+  );
+  if (supported && supported.size > 0) {
+    // Prefer the token the API's own cross-chain destination list supports —
+    // e.g. canonical NEAR USDC (17208628f8...) over Portal-bridged variants.
+    // A row is "supported" when any of its identifiers appears in that list.
+    const hit = chainMatch.find((r) => {
+      const ids = [
+        r.contractAddress,
+        r.address,
+        r.assetId,
+        ...((r.raw as Record<string, unknown> | undefined)
+          ? [r.raw.address, r.raw.assetId].filter((v) => typeof v === "string")
+          : []),
+      ]
+        .map((v) => String(v ?? "").toLowerCase())
+        .filter(Boolean);
+      return ids.some((id) => supported.has(id));
+    });
+    if (hit) return hit;
+  }
+  return chainMatch[0];
+}
+
+/** Raw on-chain address the quote API accepts (not the SDK's assetId form). */
+export function rawTokenAddress(r: SwapTokenListItem): string {
+  const raw = r.raw as Record<string, unknown> | undefined;
+  const candidates = [
+    r.contractAddress,
+    typeof raw?.address === "string" ? raw.address : undefined,
+    typeof raw?.contractAddress === "string" ? raw.contractAddress : undefined,
+    r.address,
+  ];
+  for (const c of candidates) {
+    const v = (c ?? "").trim();
+    // Reject the SDK's internal assetId wrappers (nep141:/omft); the quote
+    // endpoint resolves those inconsistently ("not found on chain" errors).
+    if (v && !/^nep141:/i.test(v) && !/\.omft\.near$/i.test(v)) return v;
+  }
+  throw new Error(
+    `RHEA: no raw on-chain address available for ${r.symbol ?? "?"} on ${String(r.chain)}`,
+  );
+}
+
 async function resolveRheaAssets(
   client: ReturnType<typeof createRheaClient>,
   symbolIn: string,
@@ -101,31 +167,57 @@ async function resolveRheaAssets(
   fromChain: string,
   toChain: string,
 ): Promise<{ inAddr: string; inDec: number; outAddr: string; outDec: number }> {
+  // Source token: from-list of the SOURCE chain.
   const fromRows = await client.getFromTokens({ chainId: Number(fromChain) });
-  // getCrossChainToTokens takes the DESTINATION chain's registry id.
-  const toRows = await client.getCrossChainToTokens({ chainId: registryId(toChain) });
+  // Destination token: from-list of the DESTINATION chain. The SDK's
+  // cross-chain to-list (supported_to_tokens) returns only NEAR-side omft
+  // wrappers ("nep141:...omft.near"), which the quote endpoint REJECTS as
+  // tokenOut ("not found on chain") — verified live. The destination chain's
+  // own from-list carries the raw on-chain addresses the quote API accepts
+  // (verified: Base USDC -> Solana SPL USDC quotes via rango).
+  const toRows = await client.getFromTokens({ chainId: registryId(toChain) });
+  // The API's own cross-chain destination list decides WHICH variant is
+  // actually deliverable (canonical NEAR USDC, not a Portal-bridged twin).
+  let supported: Set<string> | undefined;
+  try {
+    const destList = await client.getCrossChainToTokens({ chainId: registryId(toChain) });
+    supported = new Set(
+      destList
+        .flatMap((r) => [r.address, r.assetId, r.contractAddress])
+        .map((v) => String(v ?? "").toLowerCase())
+        .filter(Boolean),
+    );
+  } catch {
+    supported = undefined; // list unavailable — fall back to chain match only
+  }
   const hitIn = fromRows.find(
     (r) => r.symbol?.toUpperCase() === symbolIn.toUpperCase() && String(r.chain) === fromChain,
   );
-  // Destination rows carry the destination chain context; match by symbol and
-  // prefer entries whose address/assetId references the destination chain.
+  // Selection is by the row's `chain` field, preferring API-supported
+  // variants. NEVER fall back to an arbitrary first row — for Base→NEAR USDC
+  // the original matcher silently picked wNEAR as tokenOut.
   const toPool = toRows.filter((r) => r.symbol?.toUpperCase() === symbolOut.toUpperCase());
-  const hitOut =
-    toPool.find((r) => (r.address ?? "").toLowerCase().includes(toChain.toLowerCase())) ??
-    toPool[0];
+  const hitOut = pickDestinationToken(toPool, toChain, supported);
   if (!hitIn) throw new Error(`RHEA: ${symbolIn} not found for chain ${fromChain}`);
-  if (!hitOut) throw new Error(`RHEA: ${symbolOut} not found for chain ${toChain}`);
+  if (!hitOut) {
+    throw new Error(
+      `RHEA: ${symbolOut} — ${toPool.length} symbol matches on destination list, ` +
+        `but none has chain == ${toChain}; refusing to guess`,
+    );
+  }
+  // The quote endpoint needs RAW on-chain addresses, not the SDK's assetId.
   return {
-    inAddr: hitIn.address,
+    inAddr: rawTokenAddress(hitIn),
     inDec: hitIn.decimals ?? 6,
-    outAddr: hitOut.address,
+    outAddr: rawTokenAddress(hitOut),
     outDec: hitOut.decimals ?? 6,
   };
 }
 
 /** RHEA SDK quote (primary). Throws on any failure — the loop falls back. */
 async function fetchRheaQuote(params: QuoteLoopParams): Promise<Quote> {
-  getRheaJwt(); // throws a clear error when the JWT is absent
+  // Auth is handled inside the client via the rheaFetch shim + local bridge;
+  // no JWT ever exists in this process. See src/rhea-client.ts.
   const client = createRheaClient();
   const symbolIn = params.symbolIn ?? "USDC";
   const symbolOut = params.symbolOut ?? "USDC";
