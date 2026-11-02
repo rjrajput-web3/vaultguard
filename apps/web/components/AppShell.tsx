@@ -32,6 +32,7 @@ const NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: icon("M3 10.5 12 3l9 7.5V21H3z M9 21v-6h6v6") },
   { href: "/swap", label: "Swap", icon: icon("M7 16V8m0 0L4 11m3-3 3 3-3 M17 8v8m0 0 3-3m-3 3-3-3") },
   { href: "/wallet", label: "Wallet", icon: icon("M20 7H5a2 2 0 0 1 0-4h13v4 M20 7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5 M18 14h.01") },
+  { href: "/agent", label: "AI Agent", icon: icon("M12 3a7 7 0 0 1 7 7c0 2.4-1.2 4.5-3 5.7V18a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.3C6.2 14.5 5 12.4 5 10a7 7 0 0 1 7-7z M9 22h6"), badge: "New" },
   { href: "/security", label: "Route Guardian", icon: icon("M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z M9.5 12l2 2 3.5-4") },
   { href: "/privacy", label: "Privacy", icon: icon("M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z M12 8v4 M12 15h.01") },
   { href: "/lab", label: "Testing Lab", icon: icon("M9 3h6 M10 3v5l-5.5 9.5A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-3.5L14 8V3 M7.5 14h9") },
