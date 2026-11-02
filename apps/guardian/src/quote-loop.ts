@@ -25,9 +25,14 @@ import {
   resolveOneClickAsset,
   type OneClickQuote,
 } from "./oneclick-client";
+import {
+  fetchTidePoolQuote,
+  resolveTidePoolAsset,
+  type TidePoolQuote,
+} from "./tidepool-client";
 import { evaluatePolicy, type PolicyCheck, type VaultPolicy } from "./policy";
 
-export type QuoteSource = "rhea" | "oneclick";
+export type QuoteSource = "rhea" | "tidepool" | "oneclick";
 
 export interface QuoteLoopParams {
   /** RHEA from-chain, e.g. "8453" (Base). */
@@ -50,6 +55,12 @@ export interface QuoteLoopParams {
   riskOpts?: RiskOptions;
   /** RHEA router ids to exclude from quote selection (guardian fallback). */
   excludeDexs?: string[];
+  /**
+   * Enable TidePool as the NEAR testnet intents quote source (default true).
+   * TidePool is TESTNET-ONLY; it never touches mainnet. When disabled the
+   * loop falls back to 1Click directly after RHEA.
+   */
+  useTidePool?: boolean;
   /** Vault policy — when set, each tick carries a policyCheck verdict. */
   policy?: VaultPolicy;
   /** USDC-equivalent already spent today (human units), for the daily cap. */
@@ -308,6 +319,57 @@ async function fetchOneClickNormalized(params: QuoteLoopParams): Promise<Normali
   });
 }
 
+/**
+ * Normalize a TidePool dry-run quote into the risk engine's NormalizedQuote.
+ * TidePool is NEAR Intents under the hood: router "tidepool-intents", single
+ * aggregated route (no alternatives list — redundancy scored accordingly).
+ * Same normalization as 1Click; the router label records the testnet source.
+ */
+export function normalizeTidePoolQuote(
+  q: TidePoolQuote,
+  ctx: {
+    fromChain: string;
+    toChain: string;
+    tokenInAddr: string;
+    tokenOutAddr: string;
+    amountIn: string;
+    decimalsIn: number;
+    decimalsOut: number;
+  },
+): NormalizedQuote {
+  const n = normalizeOneClickQuote(q as OneClickQuote, ctx);
+  return { ...n, router: "tidepool-intents" };
+}
+
+/** TidePool TESTNET dry-run quote. Throws on any failure. */
+async function fetchTidePoolNormalized(params: QuoteLoopParams): Promise<NormalizedQuote> {
+  const symbolIn = params.symbolIn ?? "USDC";
+  const symbolOut = params.symbolOut ?? "USDC";
+  const [assetIn, assetOut] = await Promise.all([
+    resolveTidePoolAsset(symbolIn, params.fromBlockchain),
+    resolveTidePoolAsset(symbolOut, params.toBlockchain),
+  ]);
+  const q = (await fetchTidePoolQuote({
+    originAsset: assetIn.assetId,
+    destinationAsset: assetOut.assetId,
+    amount: params.amountIn,
+    slippageBps: params.slippageBps ?? 50,
+    recipient: params.dryRecipient,
+    refundTo: params.dryRefundTo,
+    dry: true,
+    timeoutMs: params.sourceTimeoutMs ?? 60000,
+  })) as TidePoolQuote;
+  return normalizeTidePoolQuote(q, {
+    fromChain: params.fromChain,
+    toChain: params.toChain,
+    tokenInAddr: assetIn.contractAddress ?? assetIn.assetId,
+    tokenOutAddr: assetOut.contractAddress ?? assetOut.assetId,
+    amountIn: params.amountIn,
+    decimalsIn: assetIn.decimals,
+    decimalsOut: assetOut.decimals,
+  });
+}
+
 /** Evaluate the vault policy against a normalized quote, when a policy is set. */
 function checkPolicy(
   params: QuoteLoopParams,
@@ -321,8 +383,9 @@ function checkPolicy(
 }
 
 /**
- * One loop iteration: RHEA first, 1Click on any RHEA failure.
- * Never throws — failures are reported as unhealthy ticks.
+ * One loop iteration: RHEA first, TidePool (testnet intents) second,
+ * 1Click (mainnet intents) last. Never throws — failures are reported
+ * as unhealthy ticks.
  */
 export async function runQuoteIteration(params: QuoteLoopParams): Promise<QuoteTick> {
   const at = Date.now();
@@ -334,8 +397,9 @@ export async function runQuoteIteration(params: QuoteLoopParams): Promise<QuoteT
     decimalsOut: 6,
     ...(params.riskOpts ?? {}),
   };
+  const errors: string[] = [];
 
-  // 1. RHEA primary.
+  // 1. RHEA primary (mainnet path).
   attempted.push("rhea");
   const rheaStart = Date.now();
   try {
@@ -350,29 +414,51 @@ export async function runQuoteIteration(params: QuoteLoopParams): Promise<QuoteT
       latencyMs: Date.now() - rheaStart, attempted,
     };
   } catch (err) {
-    const rheaError = err instanceof Error ? err.message : String(err);
-    // 2. 1Click fallback.
-    attempted.push("oneclick");
-    const ocStart = Date.now();
+    errors.push(`rhea: ${(err instanceof Error ? err.message : String(err)).slice(0, 100)}`);
+  }
+
+  // 2. TidePool TESTNET intents (default ON). 1Click-compatible testnet
+  // sandbox — the only working NEAR-leg path while the 1Click solver is down.
+  if (params.useTidePool !== false) {
+    attempted.push("tidepool");
+    const tpStart = Date.now();
     try {
       const normalized = await withTimeout(
-        fetchOneClickNormalized(params), timeoutMs * 2, "1Click quote",
+        fetchTidePoolNormalized(params), timeoutMs * 2, "TidePool quote",
       );
       const report = scoreRisk(normalized, riskOpts);
       return {
-        at, source: "oneclick", healthy: true, normalized, report,
+        at, source: "tidepool", healthy: true, normalized, report,
         policyCheck: checkPolicy(params, normalized),
-        latencyMs: Date.now() - ocStart, attempted,
-        error: `rhea failed (${rheaError.slice(0, 120)}), fell back to 1Click`,
+        latencyMs: Date.now() - tpStart, attempted,
+        error: errors.length ? `${errors.join("; ")} — fell back to TidePool (testnet)` : undefined,
       };
-    } catch (err2) {
-      const ocError = err2 instanceof Error ? err2.message : String(err2);
-      return {
-        at, source: "oneclick", healthy: false,
-        latencyMs: Date.now() - ocStart, attempted,
-        error: `rhea failed (${rheaError.slice(0, 100)}); 1Click failed (${ocError.slice(0, 100)})`,
-      };
+    } catch (err) {
+      errors.push(`tidepool: ${(err instanceof Error ? err.message : String(err)).slice(0, 100)}`);
     }
+  }
+
+  // 3. 1Click mainnet fallback (solver currently down — honest last resort).
+  attempted.push("oneclick");
+  const ocStart = Date.now();
+  try {
+    const normalized = await withTimeout(
+      fetchOneClickNormalized(params), timeoutMs * 2, "1Click quote",
+    );
+    const report = scoreRisk(normalized, riskOpts);
+    return {
+      at, source: "oneclick", healthy: true, normalized, report,
+      policyCheck: checkPolicy(params, normalized),
+      latencyMs: Date.now() - ocStart, attempted,
+      error: errors.length ? `${errors.join("; ")} — fell back to 1Click` : undefined,
+    };
+  } catch (err2) {
+    errors.push(`oneclick: ${(err2 instanceof Error ? err2.message : String(err2)).slice(0, 100)}`);
+    return {
+      at, source: "oneclick", healthy: false,
+      latencyMs: Date.now() - ocStart, attempted,
+      error: errors.join("; "),
+    };
   }
 }
 
