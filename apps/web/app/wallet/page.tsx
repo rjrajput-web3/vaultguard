@@ -358,8 +358,7 @@ function Dashboard(props: {
             <h3 style={{ margin: "0 0 6px" }}>No wallet on this device yet</h3>
             <p style={hint}>
               Create a new NEAR testnet wallet (keys generated + encrypted locally) or import an
-              existing one.{" "}
-              ""
+              existing one.
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
               <button className="vg-btn" onClick={() => props.goTo("create")}>Create wallet</button>
