@@ -27,7 +27,7 @@ NEAR (near-sdk-js smart contract, testnet), RHEA X Chain SDK, NEAR Intents 1Clic
 TypeScript, Next.js 14, Node.js
 
 ## Repository URL
-[TO FILL — public GitHub repo, created at submission time]
+https://github.com/rjrajput-web3/vaultguard (public, pushed 2026-11-02 ~13:15 IST, verified)
 
 ## Demo video URL
 [TO FILL — public YouTube link, <3 min]

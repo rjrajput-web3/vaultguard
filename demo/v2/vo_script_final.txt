@@ -1,0 +1,23 @@
+# VAULTGUARD final video — voiceover script (locked 2026-11-02)
+# Voice: en-US-ChristopherNeural via edge_tts_direct.py. Total target ~165s (2:45).
+
+## S1 — HOOK (0:00-0:15)
+In April 2026, a single flawed swap function drained eighteen million dollars from RHEA. DeFi vaults keep dying the same way — blind swaps, no pre-flight checks, no limits. VAULTGUARD refuses to swap blind.
+
+## S2 — ARCHITECTURE (0:15-0:38)
+Every cross-chain conversion flows through the VAULTGUARD guardian. The RHEA SDK prices the route. The risk engine scores it — router health, slippage, fees, exit cost. If RHEA degrades, NEAR Intents takes over as fallback. And the NEAR smart contract enforces the final limits on-chain — not the UI, not a server.
+
+## S3 — QUOTE LOOP (0:38-1:00)
+Watch a real dry-run quote. One USDC on Base to USDC on NEAR. Live pricing, risk score fifteen point seven — verdict: safe. This is a dry run — no funds move — but the scoring is real, and every production quote passes through it before anything is signed.
+
+## S4 — POLICY UI (1:00-1:20)
+Guardians set policy in the app — spending caps, allowed assets, allowed routers. This policy steers the off-chain guardian. Separately, the on-chain contract carries its own hard cap — set at deploy, changeable only by the guardian — and the contract is the final authority no interface can override.
+
+## S5 — ON-CHAIN PROOF (1:20-2:05)
+Proof — live on the NEAR testnet explorer, against the deployed contract. Five hundred USDC, within the thousand-dollar cap — approved. Two thousand USDC, over the cap — the contract itself rejects it. The guardian pauses the vault — every withdrawal halts. Unpause — withdrawals resume instantly. Six real transactions. Cap enforced. Pause enforced. Recovery proven. All on-chain, all verifiable.
+
+## S6 — GUARDIAN TRAIL + DEPEG (2:05-2:25)
+The route guardian's decision trail — primary healthy, route accepted; primary degraded in simulation, the vault pauses instead of blind-swapping. The depeg monitor watches stablecoin prices — no depeg, no action; depeg confirmed, the vault pauses and alerts. Dry-run logic, honestly labeled, fully verified.
+
+## S7 — CLOSING (2:25-2:45)
+VAULTGUARD. Pre-flight risk scanning, smart route fallback, user-defined limits, on-chain enforcement. Built for the NEAR Build Beyond Boundaries hackathon — Unstoppable DeFi track. Code on GitHub. Verify every transaction yourself on the NEAR explorer.

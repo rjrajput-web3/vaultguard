@@ -6,8 +6,8 @@
 >
 > Proven on testnet: 500 USDC withdrawal approved, 2000 over the cap rejected by the contract itself, guardian pause/unpause recovery working end-to-end.
 >
-> Demo: [YOUTUBE LINK]
-> Code: [GITHUB REPO LINK]
+> Demo video: attached below
+> Code: https://github.com/rjrajput-web3/vaultguard
 >
 > @NEARProtocol #NEARHackathon #BuildBeyondBoundaries #DeFi
 

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VAULTGUARD — on-chain spending-limit demo · NEAR testnet</title>
+<style>
+  body { background:#070b14; color:#dbe4f3; font-family:ui-monospace,Menlo,Consolas,monospace; margin:0; padding:40px 56px; font-size:17px; line-height:1.65; }
+  h1 { font-size:26px; color:#fff; margin:0 0 4px; }
+  .sub { color:#8fa0bd; font-size:15px; margin-bottom:28px; }
+  .ok { color:#22c55e; font-weight:700; }
+  .no { color:#ef4444; font-weight:700; }
+  .tx { color:#7dd3fc; }
+  .dim { color:#64748b; }
+  .row { border-left:3px solid #22304d; padding:10px 0 10px 20px; margin:18px 0; }
+  .row.okb { border-color:#22c55e; } .row.nob { border-color:#ef4444; }
+  .banner { background:#f59e0b22; border:1px solid #f59e0b; border-radius:8px; padding:10px 16px; font-size:14px; margin-bottom:24px; color:#f5d9a8; }
+</style>
+</head>
+<body>
+<div class="banner">Real on-chain transactions — NEAR testnet, contract vaultguard.vgdeployer.testnet. Verifiable on the testnet explorer.</div>
+<h1>VAULTGUARD — spending-limit demo</h1>
+<div class="sub">vault: vaultguard.vgdeployer.testnet &nbsp;·&nbsp; guardian: vgdeployer.testnet &nbsp;·&nbsp; per-tx cap: 1000 USDC</div>
+
+<div class="row okb"><span class="ok">✓ APPROVED</span> — withdraw 500 USDC (within cap)<br><span class="dim">tx</span> <span class="tx">EEHfcL14YnABocSomyUJGNTozoBQFrLRHqinPAa2na5j</span></div>
+
+<div class="row nob"><span class="no">✗ REJECTED</span> — withdraw 2000 USDC — <span class="dim">VAULTGUARD: amount exceeds per-tx spend cap</span><br><span class="dim">the contract itself refused. No off-chain override possible.</span></div>
+
+<div class="row"><span class="ok">✓</span> — guardian calls set_paused(true) — vault halts<br><span class="dim">tx</span> <span class="tx">Dq8R4nZqRoSsUYnHD2MTh4NNVjrMF9k5cRLhBJ3PcdWo</span></div>
+
+<div class="row nob"><span class="no">✗ REJECTED</span> — withdraw 100 USDC while paused — <span class="dim">VAULTGUARD: vault is paused — guardian halt in effect</span></div>
+
+<div class="row"><span class="ok">✓</span> — guardian calls set_paused(false) — vault resumes<br><span class="dim">tx</span> <span class="tx">FR5g2Xm9fCK63Tj9sG91jGcTLYbpQxdGERo1Vb2nvkfB</span></div>
+
+<div class="row okb"><span class="ok">✓ APPROVED</span> — withdraw 100 USDC after unpause<br><span class="dim">tx</span> <span class="tx">Goz6hbkT5LyVdKCP7sv4SZqMJ4dE98hqRB3CaHqYgbNy</span></div>
+
+<div class="sub" style="margin-top:30px">VERDICT: <span class="ok">PASS</span> — cap + pause enforced on-chain. The contract is the final authority.</div>
+</body>
+</html>
