@@ -134,6 +134,14 @@ function fromBaseUnits(v: string, decimals: number): string {
   }
 }
 
+/** Display trim: cap fractional digits at 6 so 18/24-decimal tokens don't flood the UI. */
+function fmtDisplay(v: string): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return v;
+  if (Math.abs(n) >= 1000) return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return String(Number(n.toFixed(6)));
+}
+
 type Phase =
   | "checking"
   | "unconfigured"
@@ -766,15 +774,15 @@ export default function RheaSwapPanel() {
           <dl className="vg-kv" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div>
               <dt>You send</dt>
-              <dd>{fromBaseUnits(quote.amountIn, fromToken.decimals)} {fromToken.symbol}</dd>
+              <dd>{fmtDisplay(fromBaseUnits(quote.amountIn, fromToken.decimals))} {fromToken.symbol}</dd>
             </div>
             <div>
               <dt>You receive (est.)</dt>
-              <dd>{fromBaseUnits(quote.estimatedOut, toToken.decimals)} {toToken.symbol}</dd>
+              <dd>{fmtDisplay(fromBaseUnits(quote.estimatedOut, toToken.decimals))} {toToken.symbol}</dd>
             </div>
             <div>
               <dt>Minimum received</dt>
-              <dd>{fromBaseUnits(quote.minAmountOut, toToken.decimals)} {toToken.symbol}</dd>
+              <dd>{fmtDisplay(fromBaseUnits(quote.minAmountOut, toToken.decimals))} {toToken.symbol}</dd>
             </div>
             <div>
               <dt>Route Guardian</dt>

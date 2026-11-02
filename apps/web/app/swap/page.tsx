@@ -94,6 +94,14 @@ function fromBaseUnits(units: string, decimals: number): string {
   return (neg ? "-" : "") + whole + (frac ? `.${frac}` : "");
 }
 
+/** Display trim: cap fractional digits at 6 so 24-decimal tokens don't flood the UI. */
+function fmtDisplay(raw: string): string {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return raw;
+  if (Math.abs(n) >= 1000) return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return String(Number(n.toFixed(6)));
+}
+
 function fmtDurationMs(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
   if (s < 60) return `≈ ${s}s`;
@@ -631,7 +639,7 @@ function SwapPageInner() {
                     </div>
                     <div>
                       <dt>You receive (est.)</dt>
-                      <dd>{fromBaseUnits(quote.amountOut, toToken.decimals)} {toToken.symbol}</dd>
+                      <dd>{fmtDisplay(fromBaseUnits(quote.amountOut, toToken.decimals))} {toToken.symbol}</dd>
                     </div>
                     <div>
                       <dt>Minimum received</dt>

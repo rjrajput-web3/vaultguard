@@ -41,6 +41,16 @@ function fromLabel(k: string) {
   return TESTNET_TOKENS.find((t) => t.key === k)?.label ?? k;
 }
 
+/** Readable quote amounts: raw API floats can carry 20 decimals. */
+function fmtAmount(raw: string | undefined): string {
+  if (!raw) return "—";
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return raw;
+  if (n >= 1000) return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (n >= 1) return String(Number(n.toFixed(6)));
+  return String(Number(n.toPrecision(6)));
+}
+
 /** Horizontal swap bar: live TidePool testnet quotes + real Route Guardian verdict. */
 export default function SwapBar() {
   const anim = useAnimEnabled();
@@ -226,9 +236,9 @@ export default function SwapBar() {
               <text x="304" y="14" fill="rgba(196,181,253,.65)" fontSize="10" textAnchor="end">{fromLabel(toKey)}</text>
             </svg>
             <div className="sb-quote-nums">
-              <span className="sb-q-in">{quote.amountIn} {fromLabel(fromToken)}</span>
+              <span className="sb-q-in">{fmtAmount(quote.amountIn)} {fromLabel(fromToken)}</span>
               <span className="sb-q-arrow">→</span>
-              <span className="sb-q-out">≈ {quote.amountOut} {fromLabel(toKey)}</span>
+              <span className="sb-q-out">≈ {fmtAmount(quote.amountOut)} {fromLabel(toKey)}</span>
             </div>
           </div>
           <div className="sb-gauge">
