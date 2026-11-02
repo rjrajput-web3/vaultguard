@@ -1,0 +1,1 @@
+Spending caps and allowed assets set in-app — enforced on-chain.

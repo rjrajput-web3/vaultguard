@@ -107,7 +107,7 @@ def main():
             if lp > 0.01:
                 # slight rise-in
                 y_off = int(26 * (1 - lp))
-                glow_text(img, (960, 760 + y_off), "VAULTGUARD", font(F_BOLD, 118),
+                glow_text(img, (960, 760 + y_off), "VAULTRY", font(F_BOLD, 118),
                           (240, 248, 255), BLUE, 30)
                 tp = ease_out_cubic(fade(k, int(12.6 * FPS), int(14.2 * FPS)))
                 if tp > 0.01:
