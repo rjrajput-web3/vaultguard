@@ -26,8 +26,10 @@ import type {
   EvmTx,
   NearTransaction,
 } from "@rhea-finance/cross-chain-aggregation-dex";
-import type { Account } from "near-api-js";
-import type { Action } from "near-api-js/lib/transaction";
+/* `Action` comes from the package root — near-api-js v7 ships a flat bundled
+ * type layout with no `near-api-js/lib/transaction` path (that deep import
+ * broke Vercel's fresh-install build). */
+import type { Account, Action } from "near-api-js";
 
 /* near-api-js exposes the action creators at runtime under `transactions`
  * (not present in the root .d.ts) — typed here without touching the lib. */
