@@ -346,10 +346,10 @@ function SwapPageInner() {
 
       <section className="vg-section" style={{ paddingTop: 120 }}>
         <a href="/" style={{ color: "var(--cyan)", fontSize: 14, textDecoration: "none" }}>
-          ← back to VAULTGUARD
+          ← back to VAULTRY
         </a>
         <div className="vg-eyebrow" style={{ marginTop: 24 }}>
-          VAULTGUARD · NEAR Intents
+          VAULTRY · NEAR Intents
         </div>
         <h2 className="vg-h2">
           Cross-chain <span className="grad-text">swap</span>

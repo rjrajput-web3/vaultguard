@@ -209,7 +209,7 @@ function FaucetPageInner() {
       <nav className="vg-nav">
         <div className="vg-nav-inner">
           <a className="vg-brand" href="/">
-            VAULTGUARD
+            VAULTRY
           </a>
           <div className="vg-nav-links">
             <a href="/">Dashboard</a>

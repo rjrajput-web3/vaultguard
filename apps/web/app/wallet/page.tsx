@@ -155,7 +155,7 @@ function WalletPageInner() {
 
   return (
     <div className="vg-wrap" style={{ paddingTop: 100, paddingBottom: 60, maxWidth: 880 }}>
-      <div className="vg-eyebrow">VAULTGUARD · WALLET</div>
+      <div className="vg-eyebrow">VAULTRY · WALLET</div>
       <h1 className="vg-h2" style={{ marginBottom: 6 }}>
         Your keys. <span className="grad-text">Your device. Nobody else.</span>
       </h1>

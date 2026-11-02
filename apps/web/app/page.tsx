@@ -6,6 +6,13 @@
  */
 
 import { useEffect, useState } from "react";
+import BrandMark from "../components/BrandMark";
+import HeroPreview from "../components/landing/HeroPreview";
+import LandingSwapWidget from "../components/landing/LandingSwapWidget";
+import PolicyModal from "../components/landing/PolicyModal";
+import ParticleNet from "../components/landing/ParticleNet";
+import Reveal from "../components/landing/Reveal";
+import { useAnimEnabled } from "../components/landing/useMotion";
 
 const EXPLORER = "https://explorer.testnet.near.org";
 const CONTRACT = "vaultguard.vgdeployer.testnet";
@@ -32,29 +39,22 @@ function Shield({ size = 56 }: { size?: number }) {
   );
 }
 
-function Nav() {
+function Nav({ onPolicy }: { onPolicy: () => void }) {
   return (
     <nav className="vg-nav">
       <div className="vg-nav-inner">
         <a className="vg-brand" href="#top">
-          <img
-            src="/brand/vaultry-logo.png"
-            alt="VAULTRY"
-            width={34}
-            height={34}
-            style={{ borderRadius: 9, boxShadow: "0 0 18px rgba(139,92,246,0.5)" }}
-          />
+          <BrandMark size={34} />
           VAULTRY
         </a>
         <div className="vg-nav-links">
+          <a href="#live-swap">Live swap</a>
           <a href="#scanner">Risk scanner</a>
           <a href="#guardian">Route guardian</a>
-          <a href="#depeg">Depeg shield</a>
           <a href="#proof">On-chain proof</a>
-          <a href="#architecture">Architecture</a>
           <a href="/wallet">Wallet</a>
         </div>
-        <a className="vg-btn" href="/policy" style={{ marginLeft: 8 }}>Policy console</a>
+        <button className="vg-btn" onClick={onPolicy} style={{ marginLeft: 8 }}>Policy console</button>
       </div>
     </nav>
   );
@@ -62,28 +62,19 @@ function Nav() {
 
 /* ---------------- 1. hero ---------------- */
 
-function Hero() {
+function Hero({ onPolicy }: { onPolicy: () => void }) {
+  const anim = useAnimEnabled();
   return (
     <header className="vg-hero" id="top">
       <div className="vg-hero-bg">
+        <ParticleNet />
         <div className="vg-grid-bg" />
         <div className="vg-orb vg-orb-1" />
         <div className="vg-orb vg-orb-2" />
       </div>
       <div className="vg-wrap vg-hero-inner">
-        <div className="vg-shield-wrap fade-up">
-          <div className="vg-shield-ring" />
-          <div className="vg-shield-ring r2" />
-          <div className="vg-shield-ring r3" />
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <img
-              src="/brand/vaultry-logo.png"
-              alt="VAULTRY"
-              width={120}
-              height={120}
-              style={{ borderRadius: 28, boxShadow: "0 0 60px rgba(139,92,246,0.55)" }}
-            />
-          </div>
+        <div className="fade-up" style={{ margin: "0 auto 26px", width: 88 }}>
+          <BrandMark size={88} className={anim ? "brand-mark-3d brand-mark-hero brand-glow-pulse" : ""} />
         </div>
         <div className="vg-hero-badge fade-up d1">
           <span className="vg-pulse-dot" /> NEAR HACKATHON · BUILD BEYOND BOUNDARIES · UNSTOPPABLE DEFI
@@ -97,14 +88,17 @@ function Hero() {
           smart contract enforces your limits on-chain — as code, not as a suggestion.
         </p>
         <div className="vg-hero-ctas fade-up d4">
-          <a className="vg-btn" href="#proof">Explore the on-chain proof</a>
-          <a className="vg-btn vg-btn-ghost" href="/policy">Open policy console</a>
+          <a className="vg-btn" href="/swap">Launch App</a>
+          <button className="vg-btn vg-btn-ghost" onClick={onPolicy}>Policy Console</button>
         </div>
-        <div className="vg-stats fade-up d4">
-          <div className="vg-stat glass"><b>6/6</b><span>on-chain checks passed</span></div>
-          <div className="vg-stat glass"><b>$18.4M</b><span>RHEA exploit that inspired it</span></div>
-          <div className="vg-stat glass"><b>1,000</b><span>USDC per-tx hard cap</span></div>
-          <div className="vg-stat glass"><b>0</b><span>blind swaps executed</span></div>
+        <div className="fade-up d4">
+          <HeroPreview />
+        </div>
+        <div className="vg-stats fade-up d4" style={{ marginTop: 40 }}>
+          <div className="vg-stat glass tilt"><b>6/6</b><span>on-chain checks passed</span></div>
+          <div className="vg-stat glass tilt"><b>$18.4M</b><span>RHEA exploit that inspired it</span></div>
+          <div className="vg-stat glass tilt"><b>1,000</b><span>USDC per-tx hard cap</span></div>
+          <div className="vg-stat glass tilt"><b>0</b><span>blind swaps executed</span></div>
         </div>
       </div>
     </header>
@@ -395,7 +389,7 @@ function OnChainProof() {
         </div>
         <div className="grid-3">
           {TXS.map((t) => (
-            <div className="glass vg-tx" key={t.n}>
+            <div className="glass vg-tx tilt" key={t.n}>
               <span className="vg-tx-num">TX {t.n}</span>
               <span className={`vg-badge ${t.badge}`}>{t.label}</span>
               <h4 style={{ marginTop: 12 }}>{t.title}</h4>
@@ -461,7 +455,7 @@ function Footer() {
       <div className="vg-wrap">
         <div className="vg-footer-grid">
           <div>
-            <a className="vg-brand" href="#top" style={{ marginBottom: 14 }}><Shield size={28} /> VAULTRY</a>
+            <a className="vg-brand" href="#top" style={{ marginBottom: 14 }}><BrandMark size={30} /> VAULTRY</a>
             <p style={{ color: "#5b6a84", fontSize: 14, lineHeight: 1.7, maxWidth: 300 }}>
               Self-protecting cross-chain vault. Built for the NEAR Build Beyond Boundaries hackathon — Unstoppable DeFi track.
             </p>
@@ -497,11 +491,20 @@ function Footer() {
 /* ---------------- page ---------------- */
 
 export default function Home() {
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const openPolicy = () => setPolicyOpen(true);
   return (
     <>
-      <Nav />
+      <Nav onPolicy={openPolicy} />
       <main>
-        <Hero />
+        <Hero onPolicy={openPolicy} />
+        <section className="vg-section" id="live-swap" style={{ paddingTop: 48, paddingBottom: 48 }}>
+          <div className="vg-wrap">
+            <Reveal>
+              <LandingSwapWidget />
+            </Reveal>
+          </div>
+        </section>
         <RiskScanner />
         <RouteGuardian />
         <DepegShield />
@@ -510,6 +513,7 @@ export default function Home() {
         <Architecture />
       </main>
       <Footer />
+      <PolicyModal open={policyOpen} onClose={() => setPolicyOpen(false)} />
     </>
   );
 }

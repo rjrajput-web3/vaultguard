@@ -9,6 +9,7 @@
 
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import BrandMark from "./BrandMark";
 
 interface NavItem {
   href: string;
@@ -108,7 +109,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <div className={`v-scrim${open ? " open" : ""}`} onClick={() => setOpen(false)} />
       <aside className={`v-sidebar${open ? " open" : ""}`}>
         <a className="v-logo" href="/" onClick={() => setOpen(false)}>
-          <img src="/brand/vaultry-logo.png" alt="VAULTRY" />
+          <BrandMark size={40} />
           <span>VAULTRY</span>
         </a>
         <nav className="v-nav">

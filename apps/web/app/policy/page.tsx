@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BrandMark from "../../components/BrandMark";
 
 interface Policy {
   vaultId: string;
@@ -90,7 +91,7 @@ export default function PolicyPage() {
     <>
       <nav className="vg-nav">
         <div className="vg-nav-inner">
-          <Link className="vg-brand" href="/"><Shield /> VAULTGUARD</Link>
+          <Link className="vg-brand" href="/"><BrandMark size={32} /> VAULTRY</Link>
           <div className="vg-nav-links">
             <Link href="/#scanner">Risk scanner</Link>
             <Link href="/#proof">On-chain proof</Link>
