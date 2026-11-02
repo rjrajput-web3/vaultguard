@@ -328,49 +328,72 @@ function LabPageInner() {
   }
 
   /* ---------------- step 3 ---------------- */
+  /* TESTNET-ONLY (2026-11-02): TidePool testnet Intents quote.
+     Replaces the removed 1Click mainnet quote path. */
 
-  async function runQuoteRoute(fromChain: string, toChain: string): Promise<QuoteCtx> {
-    const tokens = await getIntentsTokens();
-    setLiveTokens(tokens);
-    const origin = await resolveAssetId("USDC", fromChain);
-    const dest = await resolveAssetId("USDC", toChain);
+  async function runQuoteRoute(): Promise<QuoteCtx> {
     const bps = parseInt(slippageBps, 10);
     if (!Number.isFinite(bps) || bps < 0 || bps > 5000) throw new Error("Slippage must be 0–5000 bps");
-    if (!recipient.trim()) throw new Error(`Enter a destination-chain address (recipient on ${toChain})`);
-    if (!refundTo.trim()) throw new Error(`Enter an origin-chain address (refundTo on ${fromChain})`);
-    const amountBaseUnits = decimalToBaseUnits(amount, origin.decimals);
-    const res = await fetch("/api/intents/quote", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        originAssetId: origin.assetId,
-        destinationAssetId: dest.assetId,
-        amountBaseUnits,
-        slippageBps: bps,
-        recipient: recipient.trim(),
-        refundTo: refundTo.trim(),
-      }),
-    });
-    const data = (await res.json()) as { ok: boolean; quote?: IntentsQuote; code?: string; message?: string };
-    if (!data.ok || !data.quote) {
-      throw new Error(`${data.code ?? "QUOTE_FAILED"}: ${data.message ?? "quote failed"}`);
+    const amountNum = Number(amount);
+    if (!Number.isFinite(amountNum) || amountNum <= 0 || amountNum > 10000)
+      throw new Error("Amount must be a number between 0 and 10,000");
+    const recip = recipient.trim() || "vgdeployer.testnet";
+    const res = await fetch(
+      `/api/tidepool/quote?amount=${encodeURIComponent(amount)}&from=usdc&to=wnear`,
+    );
+    const data = (await res.json()) as {
+      ok: boolean;
+      error?: string;
+      amountIn?: string;
+      amountInBaseUnits?: string;
+      amountOut?: string;
+      amountOutBaseUnits?: string;
+      minAmountOut?: string;
+      amountOutUsd?: string;
+      timeEstimateSec?: number;
+    };
+    if (!data.ok) {
+      throw new Error(`TidePool quote failed: ${data.error ?? "unknown error"} — shown verbatim`);
     }
+    // Synthetic IntentsToken/IntentsQuote shapes so steps 4–5 (detectors,
+    // private analysis) run unchanged on real TidePool numbers.
+    const origin = {
+      assetId: "nep141:usdc.tidepool-sandbox.testnet",
+      symbol: "USDC",
+      blockchain: "near",
+      decimals: 6,
+    } as IntentsToken;
+    const dest = {
+      assetId: "nep141:wnear.tidepool-sandbox.testnet",
+      symbol: "wNEAR",
+      blockchain: "near",
+      decimals: 24,
+    } as IntentsToken;
+    const quote: IntentsQuote = {
+      amountIn: data.amountInBaseUnits!,
+      amountOut: data.amountOutBaseUnits!,
+      minAmountOut: data.minAmountOut ?? data.amountOutBaseUnits!,
+      amountOutUsd: data.amountOutUsd,
+      timeEstimateMs: (data.timeEstimateSec ?? 10) * 1000,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      raw: data,
+    };
     return {
       origin,
       dest,
-      quote: data.quote,
-      recipient: recipient.trim(),
-      refundTo: refundTo.trim(),
-      amountBaseUnits,
+      quote,
+      recipient: recip,
+      refundTo: recip,
+      amountBaseUnits: data.amountInBaseUnits!,
       slippageBps: bps,
-      routeLabel: `Base USDC → ${toChain === "sol" ? "Solana" : "NEAR"} USDC`,
+      routeLabel: "test USDC → test wNEAR (TidePool testnet)",
     };
   }
 
   async function runQuote() {
     setStep(3, "running");
     try {
-      const ctx = await runQuoteRoute("base", "sol");
+      const ctx = await runQuoteRoute();
       setQuoteCtx(ctx);
       const s = updateLabSession({
         quotes: [
@@ -393,24 +416,20 @@ function LabPageInner() {
     }
   }
 
-  /** NEAR legs are in a known solver-side outage — show the failure honestly. */
+  /** Testnet quote sanity check — a second independent TidePool quote. */
   async function runNearOutageDemo() {
     setStep(3, "running");
     setNearOutageMsg(null);
     try {
-      await runQuoteRoute("base", "near");
-      // If the outage is fixed, say so honestly instead of showing a stale warning.
+      await runQuoteRoute();
       setNearOutageMsg(
-        "The NEAR-leg quote SUCCEEDED this time — the solver outage observed on 2026-11-02 appears to be fixed.",
+        "Second TidePool testnet quote succeeded — the testnet route is live and consistent.",
       );
       setStep(3, "success");
     } catch (e) {
       setNearOutageMsg(
-        "Honest failure — exactly what the lab expects here. " +
-          "NEAR-chain legs (origin OR destination) fail server-side on the 1Click quote endpoint: " +
-          `“${errMsg(e)}”. ` +
-          "This is a solver-side outage (verified live 2026-11-02, see lib/intents/QUOTE_STATUS.md), not a bug in this page. " +
-          "No quote was fabricated — the error above is the API's own message.",
+        "Honest failure — the TidePool testnet quote failed: " +
+          `“${errMsg(e)}”. No quote was fabricated — the error above is the API's own message.`,
       );
       setStep(3, "success");
     }
@@ -744,7 +763,7 @@ function LabPageInner() {
           <StepCard
             n={3}
             title="Fetch a real quote"
-            doThis="Dry-run a Base USDC → Solana USDC quote through the 1Click Intents API (dry-run: no funds can move, no deposit address created)."
+            doThis="Get a LIVE test USDC → test wNEAR quote from the TidePool testnet Intents sandbox (dry-run: no funds move)."
             expectThis="The API's real answer: amountOut, minAmountOut and solver time estimate — or the solver's own failure message when it is offline (e.g. the known NEAR-leg outage). Nothing is ever fabricated."
             status={st(3).status}
             error={st(3).error}

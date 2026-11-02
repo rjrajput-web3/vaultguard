@@ -7,8 +7,8 @@ const store: Record<string, string> = {};
   removeItem: (k: string) => { delete store[k]; },
 }};
 
-import { checkTestnetSwap } from "./lib/guardian/testnet-guardian";
-import { saveUserPolicy, loadUserPolicy, DEFAULT_USER_POLICY } from "./lib/policy/user-policy";
+import { checkTestnetSwap } from "./testnet-guardian";
+import { saveUserPolicy, loadUserPolicy, DEFAULT_USER_POLICY } from "../policy/user-policy";
 
 const intent = {
   fromTokenKey: "usdc",
@@ -42,17 +42,17 @@ check("normal quote -> SAFE", r.verdict === "SAFE", JSON.stringify(r));
 // 2. Emergency pause -> BLOCKED
 saveUserPolicy({ ...DEFAULT_USER_POLICY, paused: true });
 r = checkTestnetSwap(quote, intent);
-check("paused -> BLOCKED", r.verdict === "BLOCKED" && r.reasons.some(x => x.includes("pause")), JSON.stringify(r.reasons));
+check("paused -> BLOCKED", r.verdict === "BLOCKED" && r.reasons.some((x: string) => x.includes("pause")), JSON.stringify(r.reasons));
 
 // 3. Over per-tx cap -> BLOCKED
 saveUserPolicy({ ...DEFAULT_USER_POLICY, paused: false, maxSpendPerTx: 0.5 });
 r = checkTestnetSwap(quote, intent);
-check("over per-tx cap -> BLOCKED", r.verdict === "BLOCKED" && r.reasons.some(x => x.includes("per-transaction cap")), JSON.stringify(r.reasons));
+check("over per-tx cap -> BLOCKED", r.verdict === "BLOCKED" && r.reasons.some((x: string) => x.includes("per-transaction cap")), JSON.stringify(r.reasons));
 
 // 4. Router not allowed -> BLOCKED
 saveUserPolicy({ ...DEFAULT_USER_POLICY, allowedRouters: ["some-other-router"] });
 r = checkTestnetSwap(quote, intent);
-check("router disallowed -> BLOCKED", r.verdict === "BLOCKED" && r.reasons.some(x => x.includes("allow-list")), JSON.stringify(r.reasons));
+check("router disallowed -> BLOCKED", r.verdict === "BLOCKED" && r.reasons.some((x: string) => x.includes("allow-list")), JSON.stringify(r.reasons));
 
 // 5. High slippage (minOut far below out) -> CAUTION or BLOCKED (slippage > tolerance blocks)
 saveUserPolicy({ ...DEFAULT_USER_POLICY });

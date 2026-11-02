@@ -7,7 +7,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { motionAllowed } from "./useMotion";
+import { motionAllowed, useMotionTier } from "./useMotion";
 
 interface Node {
   x: number;
@@ -19,14 +19,20 @@ interface Node {
 
 const LINK = 130;
 
+const TIER_NODES = { full: 78, lite: 34, static: 0 } as const;
+
 export default function ParticleNet({ className = "" }: { className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const tier = useMotionTier();
 
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    // Tier-aware: full = 78 living nodes, lite = 34 (still visibly alive),
+    // static = no canvas animation (reduced-motion).
+    const nodeBudget = TIER_NODES[tier];
 
     let w = 0;
     let h = 0;
@@ -45,8 +51,8 @@ export default function ParticleNet({ className = "" }: { className?: string }) 
       nodes = Array.from({ length: count }, () => ({
         x: Math.random() * w,
         y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.35,
-        vy: (Math.random() - 0.5) * 0.35,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
         r: 1 + Math.random() * 2.2,
       }));
     }
@@ -63,7 +69,7 @@ export default function ParticleNet({ className = "" }: { className?: string }) 
           const d = Math.hypot(dx, dy);
           if (d < LINK) {
             const alpha = (1 - d / LINK) * 0.22;
-            ctx!.strokeStyle = `rgba(139,92,246,${alpha.toFixed(3)})`;
+            ctx!.strokeStyle = `rgba(167,139,250,${(alpha * 1.6).toFixed(3)})`;
             ctx!.beginPath();
             ctx!.moveTo(a.x, a.y);
             ctx!.lineTo(b.x, b.y);
@@ -90,13 +96,14 @@ export default function ParticleNet({ className = "" }: { className?: string }) 
       }
     }
 
-    // Motion gate: reduced-motion or low-power → one static starfield, no loop.
-    const animated = motionAllowed();
-    const rect0 = canvas.getBoundingClientRect();
-    const initialCount = rect0.width < 640 ? 28 : 60;
-    seed(initialCount);
+    // Motion gate: static tier (reduced-motion) → one frozen frame, no loop.
+    // lite tier keeps a living network (34 nodes) — degraded, never dead.
+    const animated = motionAllowed() && tier !== "static";
+    const small = canvas.getBoundingClientRect().width < 640;
+    const initialCount = tier === "static" ? 24 : small ? Math.min(nodeBudget, 30) : nodeBudget;
+    seed(Math.max(1, initialCount));
     if (!animated) {
-      drawFrame(); // static starfield, zero movement
+      drawFrame(); // frozen starfield, zero movement
       return;
     }
 
@@ -146,8 +153,9 @@ export default function ParticleNet({ className = "" }: { className?: string }) 
 
     raf = requestAnimationFrame(tick);
     const onResize = () => {
-      const c = canvas!.getBoundingClientRect().width < 640 ? 28 : 60;
-      seed(c);
+      const small = canvas!.getBoundingClientRect().width < 640;
+      const c = small ? Math.min(nodeBudget, 30) : nodeBudget;
+      seed(Math.max(1, c));
       if (!running) drawFrame();
     };
     window.addEventListener("resize", onResize);

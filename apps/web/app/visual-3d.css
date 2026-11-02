@@ -1,0 +1,310 @@
+/**
+ * VAULTRY visual-3d.css — the VISIBLE 3D transformation system (2026-11-02).
+ *
+ * "Sirf halka glow ya normal fade animation ko 3D transformation mat kehna."
+ * Every effect here must read as genuinely 3D at first glance, on desktop
+ * AND mobile. Tier-aware via [data-tier] / [data-anim] attributes:
+ *   full   — 12-layer extrusion, orbit rings, shine sweeps, parallax
+ *   lite   — 6-layer extrusion, slower wobble, no blur-heavy effects
+ *   static — final resting state, zero motion (reduced-motion only)
+ */
+
+/* ============ Logo3D — layered extrusion ============ */
+.logo3d {
+  position: relative;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+.logo3d-stage {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+.logo3d[data-tier="full"] .logo3d-stage,
+.logo3d[data-tier="lite"] .logo3d-stage {
+  animation: logo3d-wobble 7s ease-in-out infinite;
+}
+.logo3d[data-tier="lite"] .logo3d-stage {
+  animation-duration: 11s;
+}
+@keyframes logo3d-wobble {
+  0%, 100% { transform: rotateY(-14deg) rotateX(6deg); }
+  50% { transform: rotateY(14deg) rotateX(-4deg); }
+}
+.logo3d-extrude {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+.logo3d-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  backface-visibility: hidden;
+}
+.logo3d-layer img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+/* rotating conic glow ring behind the badge */
+.logo3d-ring {
+  position: absolute;
+  inset: -14%;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(168,85,247,0.5), rgba(34,211,238,0.25), transparent 40%, rgba(168,85,247,0.5));
+  filter: blur(18px);
+  opacity: 0.75;
+  pointer-events: none;
+}
+.logo3d[data-tier="full"] .logo3d-ring { animation: logo3d-spin 9s linear infinite; }
+.logo3d[data-tier="lite"] .logo3d-ring { animation: none; opacity: 0.5; }
+.logo3d[data-tier="static"] .logo3d-ring { display: none; }
+@keyframes logo3d-spin { to { transform: rotate(360deg); } }
+/* orbiting satellite dots */
+.logo3d-orbit {
+  position: absolute;
+  inset: -8%;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+.logo3d[data-tier="full"] .logo3d-orbit { animation: logo3d-spin 14s linear infinite reverse; }
+.logo3d[data-tier="lite"] .logo3d-orbit,
+.logo3d[data-tier="static"] .logo3d-orbit { display: none; }
+.logo3d-sat {
+  position: absolute;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e9d5ff, #8b5cf6);
+  box-shadow: 0 0 14px rgba(168,85,247,0.9);
+}
+.logo3d-sat.s1 { top: 2%; left: 48%; }
+.logo3d-sat.s2 { bottom: 6%; left: 12%; width: 7px; height: 7px; }
+.logo3d-sat.s3 { bottom: 10%; right: 10%; width: 8px; height: 8px; }
+/* moving specular shine across the front face */
+.logo3d-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.35) 48%, transparent 56%);
+  background-size: 250% 100%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+.logo3d[data-tier="full"] .logo3d-shine { animation: logo3d-shine 4.5s ease-in-out infinite; }
+.logo3d[data-tier="lite"] .logo3d-shine,
+.logo3d[data-tier="static"] .logo3d-shine { display: none; }
+@keyframes logo3d-shine {
+  0% { background-position: 120% 0; }
+  60%, 100% { background-position: -120% 0; }
+}
+/* dramatic top lighting baked over the face */
+.logo3d-toplight {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.22), transparent 45%, rgba(0,0,0,0.28));
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+/* floor reflection */
+.logo3d-reflection {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  transform: scaleY(-1);
+  opacity: 0.28;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.7), transparent 75%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.7), transparent 75%);
+  pointer-events: none;
+  filter: blur(1px);
+}
+.logo3d-reflection img { width: 100%; height: 100%; object-fit: contain; }
+.logo3d-floorglow {
+  position: absolute;
+  top: 104%;
+  left: 10%;
+  right: 10%;
+  height: 34px;
+  background: radial-gradient(ellipse at center, rgba(139,92,246,0.45), transparent 70%);
+  filter: blur(10px);
+  pointer-events: none;
+}
+.logo3d[data-tier="static"] .logo3d-reflection,
+.logo3d[data-tier="static"] .logo3d-floorglow { opacity: 0.15; }
+
+/* ============ HeroLivePanel — 3D-tilted glass dashboard ============ */
+.hero-live-panel {
+  transform: perspective(1400px) rotateY(-9deg) rotateX(5deg);
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  background: linear-gradient(145deg, rgba(24,16,48,0.85), rgba(10,7,24,0.78));
+  border: 1px solid rgba(168,85,247,0.35);
+  border-radius: 20px;
+  box-shadow:
+    0 30px 80px rgba(0,0,0,0.55),
+    0 0 60px rgba(124,58,237,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+  backdrop-filter: blur(20px);
+  overflow: hidden;
+}
+.hero-live-panel:hover {
+  transform: perspective(1400px) rotateY(-4deg) rotateX(2deg) translateY(-6px);
+  box-shadow:
+    0 40px 100px rgba(0,0,0,0.6),
+    0 0 90px rgba(124,58,237,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.16);
+}
+[data-tier="lite"] .hero-live-panel { transform: perspective(1400px) rotateY(-5deg); }
+[data-tier="static"] .hero-live-panel { transform: none; }
+.hero-live-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.25), transparent 30%, transparent 70%, rgba(168,85,247,0.4));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.hlp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px;
+  border-bottom: 1px solid rgba(168,85,247,0.12);
+  font-size: 13.5px;
+}
+.hlp-row:last-child { border-bottom: none; }
+.hlp-pulse {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 10px #34d399;
+  animation: hlp-pulse 2s ease-in-out infinite;
+}
+@keyframes hlp-pulse { 50% { opacity: 0.4; transform: scale(0.8); } }
+
+/* HeroLivePanel inner layout */
+.hlp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid rgba(168,85,247,0.14);
+}
+.hlp-title { font-size: 13px; font-weight: 700; letter-spacing: 0.6px; color: #e9eef7; }
+.hlp-quote { padding: 14px 18px 6px; }
+.hlp-label { display: block; font-size: 11px; letter-spacing: 1px; color: var(--t-dim); margin-bottom: 6px; font-weight: 700; }
+.hlp-amount { font-size: 17px; color: #fff; }
+.hlp-amount strong { color: #a78bfa; }
+.hlp-arrow { color: #34d399; margin: 0 6px; }
+.hlp-loading, .hlp-error { font-size: 13.5px; color: var(--t-dim); }
+.hlp-error { color: #fbbf24; }
+.hero-risk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: rgba(0,0,0,0.3);
+}
+.hero-risk-dot { width: 8px; height: 8px; border-radius: 50%; }
+.hero-wallet-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #a5b4fc;
+  text-decoration: none;
+  border: 1px solid rgba(165,180,252,0.3);
+  border-radius: 10px;
+  padding: 8px 14px;
+  transition: all 0.2s ease;
+}
+.hero-wallet-slot:hover { background: rgba(165,180,252,0.1); transform: translateY(-1px); }
+.hlp-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px 16px;
+  font-size: 12px;
+  color: var(--t-dim);
+}
+.hlp-foot code {
+  font-family: monospace;
+  font-size: 11.5px;
+  color: #a78bfa;
+  background: rgba(139,92,246,0.1);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.hlp-foot a { color: #22d3ee; text-decoration: none; margin-left: auto; }
+
+/* ============ Glass-3D system (cards, sections) ============ */
+.glass-3d {
+  position: relative;
+  background: linear-gradient(150deg, rgba(30,20,60,0.66), rgba(10,7,24,0.55));
+  border-radius: 18px;
+  backdrop-filter: blur(16px);
+  box-shadow:
+    0 18px 50px rgba(0,0,0,0.45),
+    0 0 40px rgba(124,58,237,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.10);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
+}
+.glass-3d::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  padding: 1px;
+  background: linear-gradient(140deg, rgba(255,255,255,0.22), rgba(168,85,247,0.08) 40%, transparent 70%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.glass-3d.tilt-hover:hover {
+  transform: perspective(1000px) rotateX(4deg) rotateY(-4deg) translateY(-8px);
+  box-shadow:
+    0 28px 70px rgba(0,0,0,0.55),
+    0 0 70px rgba(124,58,237,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.16);
+}
+[data-tier="static"] .glass-3d.tilt-hover:hover { transform: translateY(-4px); }
+
+/* ============ Reveal — cinematic scroll transitions ============ */
+.reveal {
+  opacity: 0;
+  transform: translateY(44px) scale(0.985);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1), transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal[data-delay="1"].is-visible { transition-delay: 0.1s; }
+.reveal[data-delay="2"].is-visible { transition-delay: 0.2s; }
+.reveal[data-delay="3"].is-visible { transition-delay: 0.3s; }
+[data-tier="static"] .reveal { opacity: 1; transform: none; }
+
+/* ============ Hero parallax ============ */
+.hero-parallax {
+  will-change: transform;
+}
+[data-tier="full"] .hero-parallax { transform: translateZ(0); }
+
+/* ============ Vignette + atmosphere ============ */
+.vg-atmosphere::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(ellipse 120% 90% at 50% 40%, transparent 55%, rgba(4,2,12,0.55) 100%);
+}

@@ -11,6 +11,8 @@ import SwapBar from "../components/landing/SwapBar";
 import RiskGauge from "../components/landing/RiskGauge";
 import PolicyModal from "../components/landing/PolicyModal";
 import ParticleNet from "../components/landing/ParticleNet";
+import Logo3D from "../components/landing/Logo3D";
+import HeroLivePanel from "../components/landing/HeroLivePanel";
 import Reveal from "../components/landing/Reveal";
 import { scoreLiveQuote, VERDICT_COLOR, type RiskVerdict } from "../components/landing/risk";
 import { useAnimEnabled } from "../components/landing/useMotion";
@@ -178,14 +180,10 @@ function Hero({ onPolicy }: { onPolicy: () => void }) {
             </div>
           </div>
           <div className="hero-visual fade-up d2">
-            <div className="hero-v-wrap">
-              <BrandMark
-                size={230}
-                className={anim ? "brand-mark-3d brand-mark-hero brand-glow-pulse" : "brand-mark-hero"}
-              />
-              <div className="hero-v-pedestal" aria-hidden="true" />
+            <div className="hero-v-wrap" style={{ marginBottom: 28 }}>
+              <Logo3D size={230} />
             </div>
-            <GuardianFloat />
+            <HeroLivePanel />
           </div>
         </div>
       </div>
@@ -304,7 +302,7 @@ function RiskScanner() {
           Verdicts: SAFE, CAUTION, BLOCKED. Nothing reaches the chain unchecked.
         </p>
         <div className="vg-banner">
-          Sample result — demo data. Live RHEA quotes connect when their endpoint recovers; the NEAR Intents 1Click fallback is live.
+          Sample result — demo data. Live quotes are TidePool testnet Intents — valueless test tokens only.
         </div>
         <div className="glass glass-pad">
           <div className="vg-gauge-wrap">
