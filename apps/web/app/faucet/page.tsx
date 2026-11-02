@@ -1,5 +1,7 @@
 "use client";
 
+import AppShell from "../../components/AppShell";
+
 /**
  * VAULTGUARD — NEAR Testnet Faucet page.
  *
@@ -46,7 +48,7 @@ function randomName(): string {
   return `${w}-${n}.testnet`;
 }
 
-export default function FaucetPage() {
+function FaucetPageInner() {
   const [accountId, setAccountId] = useState("");
   const [idError, setIdError] = useState<string | null>(null);
   const [publicKey, setPublicKey] = useState("");
@@ -370,5 +372,13 @@ export default function FaucetPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function FaucetPage() {
+  return (
+    <AppShell>
+      <FaucetPageInner />
+    </AppShell>
   );
 }

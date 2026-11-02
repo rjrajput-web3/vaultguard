@@ -1,5 +1,7 @@
 "use client";
 
+import AppShell from "../../components/AppShell";
+
 /**
  * VAULTRY "Privacy & Data Controls" page (workstream M3: Privacy & Private AI).
  *
@@ -182,7 +184,7 @@ function CheckBadge({ status }: { status: "pass" | "fail" | "skip" }) {
   );
 }
 
-export default function PrivacyPage() {
+function PrivacyPageInner() {
   const [consent, setConsent] = useState<PrivacyConsent | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<PrivateAnalysisResult | null>(null);
@@ -690,5 +692,13 @@ export default function PrivacyPage() {
         </Link>
       </div>
     </main>
+  );
+}
+
+export default function PrivacyPage() {
+  return (
+    <AppShell>
+      <PrivacyPageInner />
+    </AppShell>
   );
 }

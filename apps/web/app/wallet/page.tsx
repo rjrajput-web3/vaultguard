@@ -1,5 +1,7 @@
 "use client";
 
+import AppShell from "../../components/AppShell";
+
 /**
  * VAULTGUARD wallet page — workstream B (wallet core).
  *
@@ -135,7 +137,7 @@ type ConnectTab = "evm" | "solana";
 
 /* ---------------- page ---------------- */
 
-export default function WalletPage() {
+function WalletPageInner() {
   const [tab, setTab] = useState<MainTab>("dashboard");
   const [conn, setConn] = useState<TestnetConnection | null>(null);
   const [session, setSession] = useState<WalletSession | null>(null);
@@ -1001,5 +1003,13 @@ function SolanaPanel() {
         </>
       )}
     </div>
+  );
+}
+
+export default function WalletPage() {
+  return (
+    <AppShell>
+      <WalletPageInner />
+    </AppShell>
   );
 }

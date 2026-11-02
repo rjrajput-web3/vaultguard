@@ -1,5 +1,7 @@
 "use client";
 
+import AppShell from "../../components/AppShell";
+
 /**
  * VAULTRY "AI Security & Defense" module page (workstream M2).
  *
@@ -109,7 +111,7 @@ function loadJson<T>(key: string, fallback: T): T {
   }
 }
 
-export default function SecurityPage() {
+function SecurityPageInner() {
   const [amount, setAmount] = useState("10");
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -579,5 +581,13 @@ export default function SecurityPage() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function SecurityPage() {
+  return (
+    <AppShell>
+      <SecurityPageInner />
+    </AppShell>
   );
 }

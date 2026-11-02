@@ -1,5 +1,7 @@
 "use client";
 
+import AppShell from "../../components/AppShell";
+
 /**
  * VAULTRY — public Live Testing Lab (workstream F).
  *
@@ -172,7 +174,7 @@ interface QuoteCtx {
 /* page                                                                */
 /* ------------------------------------------------------------------ */
 
-export default function LabPage() {
+function LabPageInner() {
   const [mounted, setMounted] = useState(false);
   const [policy, setPolicy] = useState<LabPolicy>({ ...DEFAULT_LAB_POLICY });
   const [policyDraft, setPolicyDraft] = useState<LabPolicy>({ ...DEFAULT_LAB_POLICY });
@@ -1061,4 +1063,12 @@ function loadLabSessionSafe() {
       detectorScans: [],
     };
   }
+}
+
+export default function LabPage() {
+  return (
+    <AppShell>
+      <LabPageInner />
+    </AppShell>
+  );
 }

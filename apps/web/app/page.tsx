@@ -37,7 +37,14 @@ function Nav() {
     <nav className="vg-nav">
       <div className="vg-nav-inner">
         <a className="vg-brand" href="#top">
-          <Shield size={30} /> VAULTRY
+          <img
+            src="/brand/vaultry-logo.png"
+            alt="VAULTRY"
+            width={34}
+            height={34}
+            style={{ borderRadius: 9, boxShadow: "0 0 18px rgba(139,92,246,0.5)" }}
+          />
+          VAULTRY
         </a>
         <div className="vg-nav-links">
           <a href="#scanner">Risk scanner</a>
@@ -69,7 +76,13 @@ function Hero() {
           <div className="vg-shield-ring r2" />
           <div className="vg-shield-ring r3" />
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Shield size={64} />
+            <img
+              src="/brand/vaultry-logo.png"
+              alt="VAULTRY"
+              width={120}
+              height={120}
+              style={{ borderRadius: 28, boxShadow: "0 0 60px rgba(139,92,246,0.55)" }}
+            />
           </div>
         </div>
         <div className="vg-hero-badge fade-up d1">

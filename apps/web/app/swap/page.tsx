@@ -1,5 +1,7 @@
 "use client";
 
+import AppShell from "../../components/AppShell";
+
 /**
  * VAULTGUARD — cross-chain swap interface (workstream G).
  *
@@ -112,7 +114,7 @@ function fmtCountdown(msLeft: number): string {
 /* page                                                                */
 /* ------------------------------------------------------------------ */
 
-export default function SwapPage() {
+function SwapPageInner() {
   /* registry */
   const [regState, setRegState] = useState<RegState>("loading");
   const [regError, setRegError] = useState<string>("");
@@ -742,5 +744,13 @@ export default function SwapPage() {
         )}
       </section>
     </div>
+  );
+}
+
+export default function SwapPage() {
+  return (
+    <AppShell>
+      <SwapPageInner />
+    </AppShell>
   );
 }
