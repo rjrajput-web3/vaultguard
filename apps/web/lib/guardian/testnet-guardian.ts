@@ -99,6 +99,11 @@ export function checkTestnetSwap(
   if (policy?.paused) {
     block("emergency pause is ON in your Policy Console — swaps are frozen until you unpause");
   }
+  // Router policy: only explicitly allowed routers may execute.
+  const ROUTER_ID = "tidepool-intents";
+  if (policy && !policy.allowedRouters.includes(ROUTER_ID)) {
+    block(`router "${ROUTER_ID}" is not in your Policy Console allow-list — enable it to swap`);
+  }
 
   /* ---- 1. intent match ---- */
   if (quote.amountInBaseUnits !== intent.amountInBaseUnits)

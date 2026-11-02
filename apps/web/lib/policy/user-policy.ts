@@ -26,16 +26,20 @@ export interface UserPolicy {
 }
 
 export const DEFAULT_USER_POLICY: UserPolicy = {
-  vaultId: "vaultguard-demo.near",
-  guardian: "guardian.vaultguard-demo.near",
+  vaultId: "vaultry-testnet",
+  guardian: "route-guardian",
   paused: false,
   maxSpendPerTx: 1000,
   maxSpendPerDay: 5000,
   allowedAssets: [
-    "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
-    "near:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    "nep141:usdc.tidepool-sandbox.testnet",
+    "nep141:usdt.tidepool-sandbox.testnet",
+    "nep141:wnear.tidepool-sandbox.testnet",
+    "nep141:wbtc.tidepool-sandbox.testnet",
+    "nep141:eth.tidepool-sandbox.testnet",
   ],
-  allowedRouters: ["nearintents", "lifi", "1inch", "rango"],
+  // Testnet-only: the TidePool Intents sandbox is the sole swap router.
+  allowedRouters: ["tidepool-intents"],
   maxHedgeSlippagePct: 2,
   maxHedgeFeePct: 1,
 };

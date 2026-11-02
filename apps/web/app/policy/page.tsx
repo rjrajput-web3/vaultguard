@@ -1,22 +1,25 @@
 "use client";
 
-/** VAULTGUARD policy editor — premium edition. Backend logic unchanged (/api/policy). */
+/**
+ * Policy Console — device-local, per-visitor (2026-11-02).
+ *
+ * Your policy is stored in THIS browser only (localStorage) — never on a
+ * server, never shared with other visitors. The Route Guardian reads it
+ * before every swap: emergency pause BLOCKS execution, spending caps are
+ * enforced against real quote amounts. A limit that doesn't enforce is a
+ * broken promise — these do.
+ */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import BrandMark from "../../components/BrandMark";
-
-interface Policy {
-  vaultId: string;
-  guardian: string;
-  paused: boolean;
-  maxSpendPerTx: number;
-  maxSpendPerDay: number;
-  allowedAssets: string[];
-  allowedRouters: string[];
-  maxHedgeSlippagePct: number;
-  maxHedgeFeePct: number;
-}
+import {
+  loadUserPolicy,
+  saveUserPolicy,
+  resetUserPolicy,
+  type UserPolicy,
+} from "../../lib/policy/user-policy";
+import { getTodaySpendUsd } from "../../lib/policy/spend-tracker";
 
 function Shield({ size = 28 }: { size?: number }) {
   return (
@@ -34,25 +37,32 @@ function Shield({ size = 28 }: { size?: number }) {
   );
 }
 
+const TESTNET_ROUTERS = ["tidepool-intents"];
+
 export default function PolicyPage() {
-  const [policy, setPolicy] = useState<Policy | null>(null);
-  const [routers, setRouters] = useState<string[]>([]);
+  const [policy, setPolicy] = useState<UserPolicy | null>(null);
   const [assetsText, setAssetsText] = useState("");
   const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [todaySpend, setTodaySpend] = useState(0);
 
   useEffect(() => {
+    // Seed from server defaults, then apply this device's overrides.
     fetch("/api/policy")
       .then((r) => r.json())
       .then((d) => {
-        setPolicy(d.policy);
-        setRouters(d.knownRouters ?? []);
-        setAssetsText((d.policy.allowedAssets ?? []).join("\n"));
+        const p = loadUserPolicy(d.policy ?? null);
+        setPolicy(p);
+        setAssetsText((p.allowedAssets ?? []).join("\n"));
       })
-      .catch((e) => setStatus({ kind: "err", msg: `load failed: ${String(e)}` }));
+      .catch(() => {
+        const p = loadUserPolicy(null);
+        setPolicy(p);
+        setAssetsText((p.allowedAssets ?? []).join("\n"));
+      });
+    setTodaySpend(getTodaySpendUsd());
   }, []);
 
-  const set = <K extends keyof Policy>(k: K, v: Policy[K]) =>
+  const set = <K extends keyof UserPolicy>(k: K, v: UserPolicy[K]) =>
     setPolicy((p) => (p ? { ...p, [k]: v } : p));
 
   const toggleRouter = (r: string) =>
@@ -62,29 +72,33 @@ export default function PolicyPage() {
       return { ...p, allowedRouters: has ? p.allowedRouters.filter((x) => x !== r) : [...p.allowedRouters, r] };
     });
 
-  async function save() {
+  function save() {
     if (!policy) return;
-    setSaving(true);
     setStatus(null);
     const body = { ...policy, allowedAssets: assetsText.split("\n").map((s) => s.trim()).filter(Boolean) };
-    try {
-      const r = await fetch("/api/policy", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const d = await r.json();
-      if (!r.ok) {
-        setStatus({ kind: "err", msg: (d.errors ?? [d.error ?? "save failed"]).join(" · ") });
-      } else {
-        setPolicy(d.policy);
-        setStatus({ kind: "ok", msg: "Policy saved — the guardian loop picks it up on its next tick." });
-      }
-    } catch (e) {
-      setStatus({ kind: "err", msg: `save failed: ${String(e)}` });
-    } finally {
-      setSaving(false);
+    const r = saveUserPolicy(body);
+    if (!r.ok) {
+      setStatus({ kind: "err", msg: r.error });
+    } else {
+      setPolicy(body);
+      setStatus({ kind: "ok", msg: "Saved on this device — the Route Guardian enforces it on your next swap." });
     }
+  }
+
+  function reset() {
+    resetUserPolicy();
+    const p = loadUserPolicy(null);
+    setPolicy(p);
+    setAssetsText((p.allowedAssets ?? []).join("\n"));
+    setStatus({ kind: "ok", msg: "Reset to defaults." });
+  }
+
+  if (!policy) {
+    return (
+      <div className="vg-wrap" style={{ paddingTop: 120, paddingBottom: 60 }}>
+        <div style={{ color: "var(--t-dim)" }}>Loading your policy…</div>
+      </div>
+    );
   }
 
   return (
@@ -93,102 +107,90 @@ export default function PolicyPage() {
         <div className="vg-nav-inner">
           <Link className="vg-brand" href="/"><BrandMark size={32} /> VAULTRY</Link>
           <div className="vg-nav-links">
-            <Link href="/#scanner">Risk scanner</Link>
-            <Link href="/#proof">On-chain proof</Link>
+            <Link href="/swap">Swap</Link>
+            <Link href="/wallet">Wallet</Link>
           </div>
           <span className="vg-badge info" style={{ marginLeft: 8 }}>POLICY CONSOLE</span>
         </div>
       </nav>
-
-      <main style={{ padding: "120px 0 80px" }}>
-        <div className="vg-wrap" style={{ maxWidth: 960 }}>
-          <div className="vg-eyebrow">Guardian policy</div>
-          <h1 className="vg-h2">Vault policy <span className="grad-text">console.</span></h1>
-          <p className="vg-sub">
-            This policy steers the <strong>off-chain guardian</strong> — caps, assets, routers, pause.
-            The <strong>on-chain contract</strong> carries its own hard cap as the final authority;
-            the two are aligned by the guardian operator, not auto-synced.
-          </p>
-
-          {status && <div className={`vg-alert ${status.kind}`}>{status.msg}</div>}
-
-          {!policy ? (
-            <div className="glass glass-pad"><p style={{ color: "#93a0b8" }}>Loading policy…</p></div>
-          ) : (
-            <>
-              <section className="glass glass-pad fade-up" style={{ marginBottom: 24 }}>
-                <h2 style={{ margin: "0 0 20px", fontSize: 18 }}>Guardian controls</h2>
-                <div className="vg-field">
-                  <label className="vg-label">Vault ID</label>
-                  <input className="vg-input" value={policy.vaultId} onChange={(e) => set("vaultId", e.target.value)} />
-                </div>
-                <div className="vg-field">
-                  <label className="vg-label">Guardian account</label>
-                  <input className="vg-input" value={policy.guardian} onChange={(e) => set("guardian", e.target.value)} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", borderRadius: 12, background: policy.paused ? "rgba(239,68,68,0.08)" : "rgba(34,197,94,0.06)", border: `1px solid ${policy.paused ? "rgba(239,68,68,0.35)" : "rgba(34,197,94,0.25)"}` }}>
-                  <label className="vg-switch">
-                    <input type="checkbox" checked={policy.paused} onChange={(e) => set("paused", e.target.checked)} />
-                    <span className="track" />
-                  </label>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>Emergency pause {policy.paused && <span style={{ color: "#f87171" }}>— ACTIVE</span>}</div>
-                    <div style={{ fontSize: 13, color: "#93a0b8" }}>{policy.paused ? "All routes halt — withdrawals stop until unpaused." : "Vault live — flip to halt every route instantly."}</div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="glass glass-pad fade-up d1" style={{ marginBottom: 24 }}>
-                <h2 style={{ margin: "0 0 20px", fontSize: 18 }}>Spending limits <span style={{ color: "#5b6a84", fontWeight: 400, fontSize: 14 }}>(USDC)</span></h2>
-                <div className="grid-2">
-                  <div className="vg-field">
-                    <label className="vg-label">Max per transaction</label>
-                    <input className="vg-input" type="number" min={0} value={policy.maxSpendPerTx} onChange={(e) => set("maxSpendPerTx", Number(e.target.value))} />
-                  </div>
-                  <div className="vg-field">
-                    <label className="vg-label">Max per day</label>
-                    <input className="vg-input" type="number" min={0} value={policy.maxSpendPerDay} onChange={(e) => set("maxSpendPerDay", Number(e.target.value))} />
-                  </div>
-                  <div className="vg-field">
-                    <label className="vg-label">Max hedge slippage %</label>
-                    <input className="vg-input" type="number" min={0} max={100} step={0.1} value={policy.maxHedgeSlippagePct} onChange={(e) => set("maxHedgeSlippagePct", Number(e.target.value))} />
-                  </div>
-                  <div className="vg-field">
-                    <label className="vg-label">Max hedge fee %</label>
-                    <input className="vg-input" type="number" min={0} max={100} step={0.1} value={policy.maxHedgeFeePct} onChange={(e) => set("maxHedgeFeePct", Number(e.target.value))} />
-                  </div>
-                </div>
-              </section>
-
-              <section className="glass glass-pad fade-up d2" style={{ marginBottom: 24 }}>
-                <h2 style={{ margin: "0 0 20px", fontSize: 18 }}>Allowed assets</h2>
-                <div className="vg-field">
-                  <label className="vg-label">One “chain:address” per line</label>
-                  <textarea className="vg-textarea" value={assetsText} onChange={(e) => setAssetsText(e.target.value)} />
-                </div>
-              </section>
-
-              <section className="glass glass-pad fade-up d3" style={{ marginBottom: 24 }}>
-                <h2 style={{ margin: "0 0 20px", fontSize: 18 }}>Allowed routers</h2>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                  {routers.map((r) => (
-                    <span key={r} className={`vg-chip ${policy.allowedRouters.includes(r) ? "on" : ""}`} onClick={() => toggleRouter(r)}>
-                      {policy.allowedRouters.includes(r) ? "●" : "○"} {r}
-                    </span>
-                  ))}
-                </div>
-              </section>
-
-              <div style={{ display: "flex", gap: 12 }}>
-                <button className="vg-btn" onClick={save} disabled={saving} style={{ fontSize: 16, padding: "14px 36px" }}>
-                  {saving ? "Saving…" : "✓ Save policy"}
-                </button>
-                <Link className="vg-btn vg-btn-ghost" href="/">← Back to dashboard</Link>
-              </div>
-            </>
-          )}
+      <div className="vg-wrap" style={{ paddingTop: 100, paddingBottom: 60, maxWidth: 720 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
+          <Shield />
+          <h1 className="vg-h2" style={{ margin: 0 }}>Policy Console</h1>
         </div>
-      </main>
+        <p className="vg-sub" style={{ marginBottom: 6 }}>
+          Your fund-protection controls. The Route Guardian enforces these{" "}
+          <b>before</b> any swap is signed — a paused console freezes execution,
+          and spending caps block over-limit quotes.
+        </p>
+        <p style={{ fontSize: 12.5, color: "var(--t-dim)", marginBottom: 20 }}>
+          Stored on <b>this device only</b> — never on a server, never shared with other visitors.
+          Testnet only.
+        </p>
+
+        {status && (
+          <div
+            role={status.kind === "err" ? "alert" : "status"}
+            style={{
+              background: status.kind === "err" ? "rgba(248,113,113,0.10)" : "rgba(52,211,153,0.08)",
+              border: `1px solid ${status.kind === "err" ? "rgba(248,113,113,0.4)" : "rgba(52,211,153,0.35)"}`,
+              borderRadius: 10, padding: "10px 14px", fontSize: 13.5, marginBottom: 16,
+              color: status.kind === "err" ? "#fca5a5" : "#6ee7b7",
+            }}
+          >
+            {status.msg}
+          </div>
+        )}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 16, padding: 16, borderRadius: 12, background: policy.paused ? "rgba(239,68,68,0.08)" : "rgba(34,197,94,0.06)", border: `1px solid ${policy.paused ? "rgba(239,68,68,0.35)" : "rgba(34,197,94,0.25)"}`, marginBottom: 16 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+            <input type="checkbox" checked={policy.paused} onChange={(e) => set("paused", e.target.checked)} style={{ width: 20, height: 20 }} />
+            <div>
+              <div style={{ fontWeight: 700 }}>Emergency pause {policy.paused && <span style={{ color: "#f87171" }}>— ACTIVE</span>}</div>
+              <div style={{ fontSize: 13, color: "#93a0b8" }}>{policy.paused ? "All swaps halt — nothing can execute until you unpause." : "Swaps live — flip to freeze every swap instantly."}</div>
+            </div>
+          </label>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
+          <div>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: "var(--t-dim)", display: "block", marginBottom: 6 }}>MAX SPEND PER TX (USD)</span>
+            <input className="vg-input" type="number" min={0} value={policy.maxSpendPerTx} onChange={(e) => set("maxSpendPerTx", Number(e.target.value))} />
+          </div>
+          <div>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: "var(--t-dim)", display: "block", marginBottom: 6 }}>MAX SPEND PER DAY (USD)</span>
+            <input className="vg-input" type="number" min={0} value={policy.maxSpendPerDay} onChange={(e) => set("maxSpendPerDay", Number(e.target.value))} />
+          </div>
+        </div>
+        <div style={{ fontSize: 13, color: "var(--t-dim)", marginBottom: 16 }}>
+          Spent on testnet swaps today: <b style={{ color: "#fff" }}>${todaySpend.toFixed(2)}</b>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: "var(--t-dim)", display: "block", marginBottom: 8 }}>ALLOWED ROUTERS (testnet)</span>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {TESTNET_ROUTERS.map((r) => (
+              <label key={r} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 10, border: `1px solid ${policy.allowedRouters.includes(r) ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.12)"}`, cursor: "pointer", fontSize: 13.5 }}>
+                <input type="checkbox" checked={policy.allowedRouters.includes(r)} onChange={() => toggleRouter(r)} />
+                {r}
+              </label>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--t-dim)", marginTop: 8 }}>
+            Only the TidePool Intents router exists on testnet. Unticking it blocks all swaps at the guardian.
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: "var(--t-dim)", display: "block", marginBottom: 8 }}>ALLOWED ASSETS (one per line)</span>
+          <textarea className="vg-input" rows={4} value={assetsText} onChange={(e) => setAssetsText(e.target.value)} style={{ fontFamily: "monospace", fontSize: 12.5 }} />
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className="vg-btn" onClick={save}>Save policy</button>
+          <button className="vg-btn vg-btn-ghost" onClick={reset}>Reset to defaults</button>
+        </div>
+      </div>
     </>
   );
 }
