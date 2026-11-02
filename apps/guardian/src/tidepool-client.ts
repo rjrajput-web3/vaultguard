@@ -59,12 +59,11 @@ export interface TidePoolLiveQuote extends TidePoolQuote {
 }
 
 interface TidePoolQuoteResponse {
-  quote: TidePoolQuote;
+  quote: TidePoolQuote & { depositAddress?: string; deadline?: string };
   quoteRequest: Record<string, unknown>;
   signature: string;
   timestamp: string;
   correlationId?: string;
-  depositAddress?: string;
   orderId?: string;
   message?: string;
 }
@@ -190,12 +189,14 @@ export async function fetchTidePoolQuote(
       throw new Error(`TidePool quote failed: HTTP ${res.status} ${data.message ?? "no quote"}`);
     }
     if (!dry) {
-      if (!data.depositAddress) {
+      // Real responses nest depositAddress inside quote (verified 2026-11-02).
+      const depositAddress = data.quote.depositAddress;
+      if (!depositAddress) {
         throw new Error("TidePool live quote returned no depositAddress — refusing to proceed");
       }
       return {
         ...data.quote,
-        depositAddress: data.depositAddress,
+        depositAddress,
         orderId: data.orderId,
         correlationId: data.correlationId,
       };
