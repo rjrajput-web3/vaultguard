@@ -1,0 +1,30 @@
+vaultguard on-chain spending-limit demo (TESTNET)
+  vault   : vaultguard.vgdeployer.testnet
+  guardian: vgdeployer.testnet
+
+1) get_status → {"paused":false,"guardian":"vgdeployer.testnet","max_spend_per_tx":"1000000000","allowed_assets":["8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913","near:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"]}
+Receipt: DFaVgxZjd8W8dCufXe1f5a42qLZQjRJYgHdsENJL7Ko2
+	Log [vaultguard.vgdeployer.testnet]: withdraw approved: 500000000 of near:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1 → vgdeployer.testnet (executor: vgdeployer.testnet)
+2) request_withdraw 500 USDC (≤ cap) → APPROVED  tx EEHfcL14YnABocSomyUJGNTozoBQFrLRHqinPAa2na5j
+Retrying transaction vaultguard.vgdeployer.testnet:DNTExBZWHBqmFqNWaCVA5Zeg5bbPBatejqF8iRUtH5RW with new nonce.
+Receipt: BLLd3UdF36pSjjotwodNcj5SZXEp4itwf96guHwZf5b1
+	Failure [vaultguard.vgdeployer.testnet]: Error: {"index":0,"kind":{"index":0,"kind":{"FunctionCallError":{"ExecutionError":"Smart contract panicked: VAULTGUARD: amount exceeds per-tx spend cap\n    at assertWithinCap (build/contract.js:2585)\n    at request_withdraw (build/contract.js:2639)\n    at apply (native)\n    at <anonymous> (build/contract.js:2498)\n    at request_withdraw (build/contract.js:2674)\n"}}}}
+3) request_withdraw 2000 USDC (> cap) → REJECTED: {"index":0,"kind":{"index":0,"kind":{"FunctionCallError":{"ExecutionError":"Smart contract panicked: VAULTGUARD: amount exceeds per-tx spend cap\n    at assertWithinCap (build/contract.js:2585)\n    at request_withdraw (build/contract.js:2639)\n    at apply (native)\n    at <anonymous> (build/contract.js:2498)\n    at request_withdraw (build/contract.js:2674)\n"}}}}
+Retrying transaction vaultguard.vgdeployer.testnet:5kk6AGmnprjQrgEdtfequu5Xej9AK1XBtE6Q5D1DR3Wd with new nonce.
+Receipt: FAi84usq3ohHZRLpwEsp4o4XqSdpukqG6rm3EJ7asxyP
+	Log [vaultguard.vgdeployer.testnet]: vault PAUSED by guardian vgdeployer.testnet
+4a) set_paused(true)  → OK  tx Dq8R4nZqRoSsUYnHD2MTh4NNVjrMF9k5cRLhBJ3PcdWo
+Retrying transaction vaultguard.vgdeployer.testnet:7SWbv89RRkEP2JPeN4w8x29au9zBURbt2yk76Hg9QFga with new nonce.
+Receipt: g6xTryWvhgtdkzTd5Nf438uvxoPXajGXow3m32fCKDK
+	Failure [vaultguard.vgdeployer.testnet]: Error: {"index":0,"kind":{"index":0,"kind":{"FunctionCallError":{"ExecutionError":"Smart contract panicked: VAULTGUARD: vault is paused — guardian halt in effect\n    at assertNotPaused (build/contract.js:2575)\n    at request_withdraw (build/contract.js:2637)\n    at apply (native)\n    at <anonymous> (build/contract.js:2498)\n    at request_withdraw (build/contract.js:2674)\n"}}}}
+4b) request_withdraw 100 USDC while PAUSED → REJECTED: {"index":0,"kind":{"index":0,"kind":{"FunctionCallError":{"ExecutionError":"Smart contract panicked: VAULTGUARD: vault is paused — guardian halt in effect\n    at assertNotPaused (build/contract.js:2575)\n    at request_withdraw (build/contract.js:2637)\n    at apply (native)\n    at <anonymous> (build/contract.js:2498)\n    at request_withdraw (build/contract.js:2674)\n"}}}}
+Retrying transaction vaultguard.vgdeployer.testnet:5ykDD9smMq6RTvSMUyZ8TF3CP5kCNuExUAUgBzqFhXhZ with new nonce.
+Receipt: HsPudE1c1mSBoS8j84ysCteLDSQrshFiDakSv6opHmxp
+	Log [vaultguard.vgdeployer.testnet]: vault UNPAUSED by guardian vgdeployer.testnet
+5a) set_paused(false) → OK  tx FR5g2Xm9fCK63Tj9sG91jGcTLYbpQxdGERo1Vb2nvkfB
+Retrying transaction vaultguard.vgdeployer.testnet:99yz8AhFNADWpBaBP2XUpBbZHzHg193L7P53kJU9WyQ4 with new nonce.
+Receipt: DXezqhoweQM5gz4F4i6aMkqHACuzXVqccUhU3YsUubQ8
+	Log [vaultguard.vgdeployer.testnet]: withdraw approved: 100000000 of near:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1 → vgdeployer.testnet (executor: vgdeployer.testnet)
+5b) request_withdraw 100 USDC after unpause → APPROVED  tx Goz6hbkT5LyVdKCP7sv4SZqMJ4dE98hqRB3CaHqYgbNy
+
+DEMO VERDICT: PASS — cap + pause enforced on-chain, recovery works
