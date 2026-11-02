@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * VAULTGUARD — premium Web3 cybersecurity SaaS dashboard.
+ * VAULTRY — premium Web3 cybersecurity SaaS dashboard.
  * Backend + /api/policy untouched. All on-chain data below is real (NEAR testnet).
  */
 
@@ -37,7 +37,7 @@ function Nav() {
     <nav className="vg-nav">
       <div className="vg-nav-inner">
         <a className="vg-brand" href="#top">
-          <Shield size={30} /> VAULTGUARD
+          <Shield size={30} /> VAULTRY
         </a>
         <div className="vg-nav-links">
           <a href="#scanner">Risk scanner</a>
@@ -45,6 +45,7 @@ function Nav() {
           <a href="#depeg">Depeg shield</a>
           <a href="#proof">On-chain proof</a>
           <a href="#architecture">Architecture</a>
+          <a href="/wallet">Wallet</a>
         </div>
         <a className="vg-btn" href="/policy" style={{ marginLeft: 8 }}>Policy console</a>
       </div>
@@ -78,7 +79,7 @@ function Hero() {
           Never <span className="grad-text">blind swaps.</span>
         </h1>
         <p className="lead fade-up d3">
-          VAULTGUARD is a self-protecting cross-chain vault. Every conversion is risk-scored
+          VAULTRY is a self-protecting cross-chain vault. Every conversion is risk-scored
           before it executes, routes fall back automatically when a venue degrades, and a NEAR
           smart contract enforces your limits on-chain — as code, not as a suggestion.
         </p>
@@ -374,7 +375,7 @@ function OnChainProof() {
         <div className="glass glass-pad" style={{ marginBottom: 24, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           <Shield size={34} />
           <div>
-            <div style={{ fontWeight: 700, fontFamily: "ui-monospace, monospace", fontSize: 15 }}>{CONTRACT}</div>
+            <div style={{ fontWeight: 700, fontFamily: "ui-monospace, monospace", fontSize: 15 }}>VAULTRY security contract ({CONTRACT})</div>
             <a href={`${EXPLORER}/accounts/${CONTRACT}`} target="_blank" rel="noreferrer" style={{ color: "#22d3ee", fontSize: 13, textDecoration: "none" }}>View contract on explorer ↗</a>
           </div>
           <span className="vg-badge ok" style={{ marginLeft: "auto" }}>6/6 PASS</span>
@@ -400,7 +401,7 @@ function OnChainProof() {
 
 function Architecture() {
   const nodes = [
-    { x: 40, t: "VAULTGUARD UI", s: "policy console · risk report", c: "#3b82f6" },
+    { x: 40, t: "VAULTRY UI", s: "policy console · risk report", c: "#3b82f6" },
     { x: 310, t: "GUARDIAN SERVICE", s: "risk engine · route guardian · oracle monitor", c: "#22d3ee" },
     { x: 580, t: "EXECUTION", s: "RHEA X Chain SDK · NEAR Intents 1Click", c: "#7dd3fc" },
     { x: 830, t: "NEAR CONTRACT", s: "spend caps · pause flag · final authority", c: "#22c55e" },
@@ -447,7 +448,7 @@ function Footer() {
       <div className="vg-wrap">
         <div className="vg-footer-grid">
           <div>
-            <a className="vg-brand" href="#top" style={{ marginBottom: 14 }}><Shield size={28} /> VAULTGUARD</a>
+            <a className="vg-brand" href="#top" style={{ marginBottom: 14 }}><Shield size={28} /> VAULTRY</a>
             <p style={{ color: "#5b6a84", fontSize: 14, lineHeight: 1.7, maxWidth: 300 }}>
               Self-protecting cross-chain vault. Built for the NEAR Build Beyond Boundaries hackathon — Unstoppable DeFi track.
             </p>
@@ -460,7 +461,7 @@ function Footer() {
           </div>
           <div>
             <h5>On-chain</h5>
-            <a href={`${EXPLORER}/accounts/${CONTRACT}`} target="_blank" rel="noreferrer">Vault contract</a>
+            <a href={`${EXPLORER}/accounts/${CONTRACT}`} target="_blank" rel="noreferrer">VAULTRY security contract</a>
             <a href="#proof">Transaction proof</a>
             <a href={EXPLORER} target="_blank" rel="noreferrer">NEAR testnet explorer</a>
           </div>
@@ -472,8 +473,8 @@ function Footer() {
           </div>
         </div>
         <div className="vg-footer-bottom">
-          <span>© 2026 VAULTGUARD · Testnet demo — no real funds.</span>
-          <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>{CONTRACT}</span>
+          <span>© 2026 VAULTRY · Testnet demo — no real funds.</span>
+          <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>VAULTRY security contract: {CONTRACT}</span>
         </div>
       </div>
     </footer>

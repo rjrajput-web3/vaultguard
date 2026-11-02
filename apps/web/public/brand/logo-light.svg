@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="128" viewBox="0 0 500 128">
+  <title>VAULTRY</title>
+<svg x="16" y="16" width="96" height="96" viewBox="0 0 96 96">
+
+  <title>VAULTRY mark</title>
+  <defs>
+    <linearGradient id="bvg-shield" x1="0" y1="0" x2="96" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="bvg-arm" x1="24" y1="28" x2="72" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7dd3fc"/>
+      <stop offset="0.5" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+    <radialGradient id="bvg-node" cx="0.35" cy="0.35" r="0.95">
+      <stop offset="0" stop-color="#eafcff"/>
+      <stop offset="0.55" stop-color="#7dd3fc"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </radialGradient>
+    <linearGradient id="bvg-bg" x1="0" y1="0" x2="0" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a1020"/>
+      <stop offset="1" stop-color="#04070f"/>
+    </linearGradient>
+  </defs>
+  <!-- geometric shield -->
+  <path d="M48 5 L79 17 V43 C79 65 66 79 48 91 C30 79 17 65 17 43 V17 Z"
+        fill="url(#bvg-bg)" stroke="url(#bvg-shield)" stroke-width="4.5" stroke-linejoin="round"/>
+  <!-- "V" letterform built from connected chain nodes: two arms = links, three vertices = nodes -->
+  <path d="M30 34 L48 60 L66 34" fill="none" stroke="url(#bvg-arm)"
+        stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- node glow halos -->
+  <circle cx="30" cy="34" r="11" fill="#22d3ee" opacity="0.18"/>
+  <circle cx="48" cy="60" r="11" fill="#22d3ee" opacity="0.18"/>
+  <circle cx="66" cy="34" r="11" fill="#22d3ee" opacity="0.18"/>
+  <!-- the three chain nodes -->
+  <circle cx="30" cy="34" r="7" fill="url(#bvg-node)"/>
+  <circle cx="48" cy="60" r="7" fill="url(#bvg-node)"/>
+  <circle cx="66" cy="34" r="7" fill="url(#bvg-node)"/>
+
+</svg>
+  <text x="130" y="80" font-family="Inter, 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="800" letter-spacing="5" fill="#eef4fb">VAULTRY</text>
+</svg>
