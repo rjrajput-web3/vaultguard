@@ -7,29 +7,38 @@
  * testnet sandbox and the response is labeled testnet throughout.
  *
  * Query params (all optional, validated against an allowlist):
- *   amount — test USDC amount, e.g. ?amount=2.5 (default 1, max 10000)
- *   to     — destination test token: wnear | usdt | wbtc | eth (default wnear)
+ *   amount — amount in the FROM token, e.g. ?amount=2.5 (default 1, max 10000)
+ *   from   — origin test token: usdc | wnear | usdt | wbtc | eth (default usdc)
+ *   to     — destination test token: usdc | wnear | usdt | wbtc | eth (default wnear)
+ * from and to must differ.
  */
 export const dynamic = "force-dynamic";
 
 const TIDEPOOL_BASE = "https://www.usetidepool.tech/v0";
-const TEST_USDC = "nep141:usdc.tidepool-sandbox.testnet";
 const TEST_TOKENS: Record<string, { id: string; label: string; decimals: number }> = {
+  usdc: { id: "nep141:usdc.tidepool-sandbox.testnet", label: "test USDC", decimals: 6 },
   wnear: { id: "nep141:wnear.tidepool-sandbox.testnet", label: "test wNEAR", decimals: 24 },
   usdt: { id: "nep141:usdt.tidepool-sandbox.testnet", label: "test USDT", decimals: 6 },
   wbtc: { id: "nep141:wbtc.tidepool-sandbox.testnet", label: "test wBTC", decimals: 8 },
   eth: { id: "nep141:eth.tidepool-sandbox.testnet", label: "test ETH", decimals: 18 },
 };
-const USDC_DECIMALS = 6;
 
 export async function GET(req: Request): Promise<Response> {
   try {
     const url = new URL(req.url);
+    const fromKey = (url.searchParams.get("from") ?? "usdc").toLowerCase();
     const toKey = (url.searchParams.get("to") ?? "wnear").toLowerCase();
+    const from = TEST_TOKENS[fromKey];
     const dest = TEST_TOKENS[toKey];
-    if (!dest) {
+    if (!from || !dest) {
       return Response.json(
-        { ok: false, network: "testnet", error: `unsupported destination "${toKey}"` },
+        { ok: false, network: "testnet", error: "unsupported token" },
+        { status: 400 },
+      );
+    }
+    if (fromKey === toKey) {
+      return Response.json(
+        { ok: false, network: "testnet", error: "from and to must differ" },
         { status: 400 },
       );
     }
@@ -41,12 +50,10 @@ export async function GET(req: Request): Promise<Response> {
         { status: 400 },
       );
     }
-    // test USDC has 6 decimals — convert to base units without float drift.
+    // Convert to base units without float drift.
     // (BigInt() calls, not `10n` literals: tsconfig targets ES2017.)
-    const baseUnits = (
-      BigInt(Math.floor(amountNum * 1_000_000)) *
-      BigInt(10) ** BigInt(USDC_DECIMALS)
-    ) / BigInt(1_000_000);
+    const scale = BigInt(1_000_000);
+    const baseUnits = (BigInt(Math.floor(amountNum * 1_000_000)) * BigInt(10) ** BigInt(from.decimals)) / scale;
 
     const deadline = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const res = await fetch(`${TIDEPOOL_BASE}/quote`, {
@@ -56,7 +63,7 @@ export async function GET(req: Request): Promise<Response> {
         dry: true,
         swapType: "EXACT_INPUT",
         slippageTolerance: 100,
-        originAsset: TEST_USDC,
+        originAsset: from.id,
         depositType: "INTENTS",
         destinationAsset: dest.id,
         amount: baseUnits.toString(),
@@ -108,7 +115,9 @@ export async function GET(req: Request): Promise<Response> {
       ok: true,
       network: "testnet",
       sandbox: "TidePool",
-      pair: `test USDC → ${dest.label}`,
+      pair: `${from.label} → ${dest.label}`,
+      fromToken: fromKey,
+      toToken: toKey,
       amountIn: String(amountNum),
       amountInBaseUnits: baseUnits.toString(),
       amountOut: amountOutHuman,

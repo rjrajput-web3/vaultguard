@@ -5,13 +5,14 @@
  * Backend + /api/policy untouched. All on-chain data below is real (NEAR testnet).
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import BrandMark from "../components/BrandMark";
-import HeroPreview from "../components/landing/HeroPreview";
-import LandingSwapWidget from "../components/landing/LandingSwapWidget";
+import SwapBar from "../components/landing/SwapBar";
+import RiskGauge from "../components/landing/RiskGauge";
 import PolicyModal from "../components/landing/PolicyModal";
 import ParticleNet from "../components/landing/ParticleNet";
 import Reveal from "../components/landing/Reveal";
+import { scoreLiveQuote, VERDICT_COLOR, type RiskVerdict } from "../components/landing/risk";
 import { useAnimEnabled } from "../components/landing/useMotion";
 
 const EXPLORER = "https://explorer.testnet.near.org";
@@ -39,28 +40,105 @@ function Shield({ size = 56 }: { size?: number }) {
   );
 }
 
-function Nav({ onPolicy }: { onPolicy: () => void }) {
+function Nav() {
+  const [open, setOpen] = useState(false);
+  const links = [
+    { href: "#live-swap", label: "Products" },
+    { href: "#guardian", label: "Security" },
+    { href: REPO, label: "Developers" },
+    { href: "#proof", label: "Analytics" },
+    { href: "#architecture", label: "About" },
+  ];
   return (
     <nav className="vg-nav">
       <div className="vg-nav-inner">
         <a className="vg-brand" href="#top">
           <BrandMark size={34} />
-          VAULTRY
+          <span className="grad-text">VAULTRY</span>
         </a>
         <div className="vg-nav-links">
-          <a href="#live-swap">Live swap</a>
-          <a href="#scanner">Risk scanner</a>
-          <a href="#guardian">Route guardian</a>
-          <a href="#proof">On-chain proof</a>
-          <a href="/wallet">Wallet</a>
+          {links.map((l) => (
+            <a key={l.label} href={l.href}>{l.label}</a>
+          ))}
         </div>
-        <button className="vg-btn" onClick={onPolicy} style={{ marginLeft: 8 }}>Policy console</button>
+        <div className="vg-nav-right">
+          <span className="vg-net-pill"><span className="vg-net-dot" /> NEAR Testnet</span>
+          <a className="vg-wallet-chip" href="/wallet" title="Connect wallet">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <rect x="3" y="7" width="18" height="13" rx="2.5" />
+              <path d="M16 12.5h.01M3 10h18" />
+            </svg>
+            Connect
+          </a>
+          <button className="vg-menu-btn" onClick={() => setOpen((o) => !o)} aria-label="Menu" aria-expanded={open}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+        </div>
       </div>
+      {open ? (
+        <div className="vg-nav-mobile">
+          {links.map((l) => (
+            <a key={l.label} href={l.href} onClick={() => setOpen(false)}>{l.label}</a>
+          ))}
+          <a href="/wallet" onClick={() => setOpen(false)}>Connect wallet</a>
+        </div>
+      ) : null}
     </nav>
   );
 }
 
 /* ---------------- 1. hero ---------------- */
+
+/** Floating Route Guardian card — verdict + score are LIVE (same API as the swap bar). */
+function GuardianFloat() {
+  const anim = useAnimEnabled();
+  const [g, setG] = useState<{ score: number; verdict: RiskVerdict } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/tidepool/quote?amount=1&from=usdc&to=wnear")
+      .then((r) => r.json())
+      .then((j) => {
+        if (alive && j && j.ok) {
+          const s = scoreLiveQuote(j.amountOutBaseUnits, j.minAmountOut);
+          setG({ score: s.score, verdict: s.verdict });
+        }
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const verdict = g?.verdict ?? "SAFE";
+  const score = g?.score ?? 0;
+  const headline =
+    verdict === "SAFE" ? "All Clear" : verdict === "CAUTION" ? "Caution" : "Blocked";
+  const riskLabel =
+    verdict === "SAFE" ? "Low Risk" : verdict === "CAUTION" ? "Medium Risk" : "High Risk";
+  return (
+    <div className="guardian-float glass tilt" data-guardian-float>
+      <div className="gf-head">
+        <span className="gf-title">Route Guardian</span>
+      </div>
+      <div className="gf-verdict" style={{ color: VERDICT_COLOR[verdict] }}>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+        {g ? headline : "Checking…"}
+      </div>
+      {g ? (
+        <>
+          <div className="gf-risk-label">Risk Score</div>
+          <RiskGauge score={score} verdict={verdict} size={118} animated={anim} />
+          <div className="gf-risk-word" style={{ color: VERDICT_COLOR[verdict] }}>{riskLabel}</div>
+          <div className="gf-live">LIVE · testnet quote</div>
+        </>
+      ) : (
+        <div className="gf-loading">Reading live guardian state…</div>
+      )}
+    </div>
+  );
+}
 
 function Hero({ onPolicy }: { onPolicy: () => void }) {
   const anim = useAnimEnabled();
@@ -72,36 +150,113 @@ function Hero({ onPolicy }: { onPolicy: () => void }) {
         <div className="vg-orb vg-orb-1" />
         <div className="vg-orb vg-orb-2" />
       </div>
-      <div className="vg-wrap vg-hero-inner">
-        <div className="fade-up" style={{ margin: "0 auto 26px", width: 88 }}>
-          <BrandMark size={88} className={anim ? "brand-mark-3d brand-mark-hero brand-glow-pulse" : ""} />
-        </div>
-        <div className="vg-hero-badge fade-up d1">
-          <span className="vg-pulse-dot" /> NEAR HACKATHON · BUILD BEYOND BOUNDARIES · UNSTOPPABLE DEFI
-        </div>
-        <h1 className="fade-up d2">
-          Never <span className="grad-text">blind swaps.</span>
-        </h1>
-        <p className="lead fade-up d3">
-          VAULTRY is a self-protecting cross-chain vault. Every conversion is risk-scored
-          before it executes, routes fall back automatically when a venue degrades, and a NEAR
-          smart contract enforces your limits on-chain — as code, not as a suggestion.
-        </p>
-        <div className="vg-hero-ctas fade-up d4">
-          <a className="vg-btn" href="/swap">Launch App</a>
-          <button className="vg-btn vg-btn-ghost" onClick={onPolicy}>Policy Console</button>
-        </div>
-        <div className="fade-up d4">
-          <HeroPreview />
-        </div>
-        <div className="vg-stats fade-up d4" style={{ marginTop: 40 }}>
-          <div className="vg-stat glass tilt"><b>6/6</b><span>on-chain checks passed</span></div>
-          <div className="vg-stat glass tilt"><b>$18.4M</b><span>RHEA exploit that inspired it</span></div>
-          <div className="vg-stat glass tilt"><b>1,000</b><span>USDC per-tx hard cap</span></div>
-          <div className="vg-stat glass tilt"><b>0</b><span>blind swaps executed</span></div>
+      <div className="vg-wrap">
+        <div className="hero-grid">
+          <div className="hero-copy">
+            <div className="vg-hero-badge fade-up">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z" />
+              </svg>
+              The Ultimate Web3 Security Layer
+            </div>
+            <h1 className="hero-h1 fade-up d1">
+              <span className="grad-text">VAULTRY</span>
+              <span className="hero-h1-sub">Swap Smarter.<br />Trade <span className="grad-text">Safer.</span></span>
+            </h1>
+            <p className="lead fade-up d2">
+              Powered by Route Guardian, cross-chain intelligence and
+              institutional-grade security.
+            </p>
+            <div className="vg-hero-ctas fade-up d3">
+              <a className="vg-btn" href="/swap">Launch dApp <span aria-hidden="true">→</span></a>
+              <button className="vg-btn vg-btn-ghost" onClick={onPolicy}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z" />
+                </svg>
+                Policy Console
+              </button>
+            </div>
+          </div>
+          <div className="hero-visual fade-up d2">
+            <div className="hero-v-wrap">
+              <BrandMark
+                size={230}
+                className={anim ? "brand-mark-3d brand-mark-hero brand-glow-pulse" : "brand-mark-hero"}
+              />
+              <div className="hero-v-pedestal" aria-hidden="true" />
+            </div>
+            <GuardianFloat />
+          </div>
         </div>
       </div>
     </header>
+  );
+}
+
+/* ---------------- feature cards ---------------- */
+
+function FeatureIcon({ kind }: { kind: "lock" | "bolt" | "shield" | "sliders" }) {
+  const paths: Record<string, React.ReactNode> = {
+    lock: (
+      <>
+        <rect x="6" y="11" width="12" height="9" rx="2" />
+        <path d="M8.5 11V8a3.5 3.5 0 017 0v3" />
+        <circle cx="12" cy="15.5" r="1.4" fill="currentColor" stroke="none" />
+      </>
+    ),
+    bolt: <path d="M13 3L5 13.5h5L10.5 21 19 10h-5.5L13 3z" />,
+    shield: (
+      <>
+        <path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z" />
+        <path d="M9 12l2 2 4-4" />
+      </>
+    ),
+    sliders: (
+      <>
+        <path d="M5 7h14M5 12h14M5 17h14" />
+        <circle cx="9" cy="7" r="2" fill="#0b0b14" />
+        <circle cx="15" cy="12" r="2" fill="#0b0b14" />
+        <circle cx="8" cy="17" r="2" fill="#0b0b14" />
+      </>
+    ),
+  };
+  return (
+    <span className="feat-icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        {paths[kind]}
+      </svg>
+    </span>
+  );
+}
+
+function FeatureCards({ onPolicy }: { onPolicy: () => void }) {
+  const cards = [
+    { icon: "lock" as const, title: "Cross-Chain Security", desc: "Trade across chains with military-grade protection.", href: "#guardian" },
+    { icon: "bolt" as const, title: "Instant Swaps", desc: "Get the best rates with ultra-fast execution.", href: "/swap" },
+    { icon: "shield" as const, title: "Route Guardian", desc: "Real-time risk detection for safer trades.", href: "/security" },
+    { icon: "sliders" as const, title: "Policy Console", desc: "Set limits, manage rules, trade with confidence.", action: "policy" as const },
+  ];
+  return (
+    <section className="feat-row" aria-label="Features">
+      {cards.map((c) => {
+        const inner = (
+          <>
+            <FeatureIcon kind={c.icon} />
+            <h3>{c.title}</h3>
+            <p>{c.desc}</p>
+          </>
+        );
+        return "action" in c && c.action === "policy" ? (
+          <button key={c.title} type="button" className="feat-card glass tilt" onClick={onPolicy}>
+            {inner}
+          </button>
+        ) : (
+          <a key={c.title} className="feat-card glass tilt" href={(c as { href: string }).href}>
+            {inner}
+          </a>
+        );
+      })}
+    </section>
   );
 }
 
@@ -492,26 +647,23 @@ function Footer() {
 
 export default function Home() {
   const [policyOpen, setPolicyOpen] = useState(false);
-  const openPolicy = () => setPolicyOpen(true);
+  const openPolicy = useCallback(() => setPolicyOpen(true), []);
   return (
     <>
-      <Nav onPolicy={openPolicy} />
-      <main>
-        <Hero onPolicy={openPolicy} />
-        <section className="vg-section" id="live-swap" style={{ paddingTop: 48, paddingBottom: 48 }}>
-          <div className="vg-wrap">
-            <Reveal>
-              <LandingSwapWidget />
-            </Reveal>
-          </div>
-        </section>
-        <RiskScanner />
-        <RouteGuardian />
-        <DepegShield />
-        <PolicyPreview />
-        <OnChainProof />
-        <Architecture />
+      <Nav />
+      <Hero onPolicy={openPolicy} />
+      <main className="vg-wrap">
+        <Reveal>
+          <SwapBar />
+        </Reveal>
+        <FeatureCards onPolicy={openPolicy} />
       </main>
+      <RiskScanner />
+      <RouteGuardian />
+      <DepegShield />
+      <PolicyPreview />
+      <OnChainProof />
+      <Architecture />
       <Footer />
       <PolicyModal open={policyOpen} onClose={() => setPolicyOpen(false)} />
     </>

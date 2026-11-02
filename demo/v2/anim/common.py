@@ -114,6 +114,88 @@ def ease_in_out(x):
     x = min(max(x, 0.0), 1.0)
     return x * x * (3 - 2 * x)
 
+def cinematic_bg(t, seed=11, orbs=None):
+    """Cinematic background: deep navy base + drifting radial glow orbs +
+    particle network + vignette. Returns (H, W, 3) uint8 RGB array.
+    orbs: list of (base_x, base_y, radius, color, drift_speed, phase) in 0..1 coords.
+    """
+    rng = np.random.default_rng(seed)
+    # deep base with subtle vertical gradient
+    y = np.linspace(0, 1, H)[:, None, None]
+    top = np.array([4, 7, 15], dtype=np.float32)
+    bot = np.array([9, 14, 28], dtype=np.float32)
+    img = (top * (1 - y) + bot * y)
+    img = np.broadcast_to(img, (H, W, 3)).copy()
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+    if orbs is None:
+        orbs = [
+            (0.22, 0.30, 0.42, (28, 90, 160), 0.05, 0.0),    # blue left
+            (0.80, 0.65, 0.46, (16, 110, 130), 0.04, 2.1),   # teal right
+            (0.55, 0.12, 0.30, (70, 40, 120), 0.06, 4.2),    # violet top
+        ]
+    for bx, by, rad, col, dsp, ph in orbs:
+        cx = (bx + dsp * math.sin(t * 0.35 + ph)) * W
+        cy = (by + dsp * 0.7 * math.cos(t * 0.28 + ph)) * H
+        r = rad * W
+        d2 = ((xx - cx) ** 2 + (yy - cy) ** 2) / (r ** 2)
+        glow = np.exp(-d2 * 2.2)
+        for c in range(3):
+            img[:, :, c] += glow * col[c] * 0.55
+    # faint grid pulse
+    gx = np.abs(np.sin(xx / 90 + t * 0.15)) ** 24
+    gy = np.abs(np.sin(yy / 90 - t * 0.12)) ** 24
+    grid = np.minimum(gx, gy) * 14
+    img += grid[:, :, None]
+    out = np.clip(img, 0, 255).astype(np.uint8)
+    # vignette
+    out = vignette(out, 0.42)
+    return out
+
+def tilt_3d(layer: Image.Image, t, cx, cy, speed=0.75, squeeze_amp=0.075, skew_amp=0.05):
+    """Fake 3D Y-rotation on an RGBA layer: oscillating x-squeeze + skew.
+    Returns transformed layer (same size). Tasteful, not gimmicky.
+    """
+    ph = t * speed
+    sq = 1.0 - squeeze_amp * (0.5 + 0.5 * math.sin(ph))   # 0.925..1.0
+    sk = skew_amp * math.cos(ph)
+    w, h = layer.size
+    m = (sq, sk, cx - sq * cx - sk * cy,
+         0, 1, 0)
+    return layer.transform((w, h), Image.AFFINE, m, resample=Image.BICUBIC)
+
+def frosted_panel(base: Image.Image, box, radius=24, tint=(150, 200, 255),
+                  tint_alpha=22, border_color=CYAN, border_alpha=200):
+    """Draw a frosted-glass panel on RGBA base. box=(x0,y0,x1,y1).
+    Returns base with panel composited (adds blur-behind, tint, glow border, shadow).
+    """
+    x0, y0, x1, y1 = box
+    # drop shadow
+    sh = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    ds = ImageDraw.Draw(sh)
+    ds.rounded_rectangle([x0 + 6, y0 + 14, x1 + 6, y1 + 14], radius=radius,
+                         fill=(0, 0, 0, 110))
+    base.alpha_composite(sh.filter(ImageFilter.GaussianBlur(22)))
+    # frosted: blurred brightened copy of the region beneath
+    region = base.crop((x0, y0, x1, y1)).filter(ImageFilter.GaussianBlur(14))
+    arr = np.array(region).astype(np.float32)
+    arr[:, :, :3] = np.clip(arr[:, :, :3] * 1.12 + np.array(tint) * 0.10, 0, 255)
+    arr[:, :, 3] = np.clip(arr[:, :, 3] * 0.55 + tint_alpha, 0, 255)
+    frost = Image.fromarray(arr.astype(np.uint8))
+    mask = Image.new("L", (x1 - x0, y1 - y0), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, x1 - x0, y1 - y0], radius=radius, fill=255)
+    base.paste(frost, (x0, y0), mask)
+    # glowing border
+    gl = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    gd = ImageDraw.Draw(gl)
+    gd.rounded_rectangle(box, radius=radius, outline=border_color + (90,), width=7)
+    base.alpha_composite(gl.filter(ImageFilter.GaussianBlur(10)))
+    d = ImageDraw.Draw(base)
+    d.rounded_rectangle(box, radius=radius, outline=border_color + (border_alpha,), width=2)
+    # top highlight streak
+    d.rounded_rectangle([x0 + 2, y0 + 2, x1 - 2, y0 + 60], radius=radius,
+                        outline=(255, 255, 255, 40), width=2)
+    return base
+
 def fade(k, a, b):
     """0..1 fade between frame counts a..b."""
     if k < a:

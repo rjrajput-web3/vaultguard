@@ -55,8 +55,8 @@ def main():
     for k in range(N):
         t = k / FPS
         parts.step()
-        base = gradient_bg(wobble=0.6, t=t)
-        img = Image.fromarray(base, "RGB").convert("RGBA")
+        arr0 = cinematic_bg(t, seed=7)
+        img = Image.fromarray(arr0, "RGB").convert("RGBA")
         d = ImageDraw.Draw(img)
         parts.draw(d, t, alpha=70)
 
@@ -81,25 +81,30 @@ def main():
                 d2.text((960, 495), "RHEA — APRIL 2026",
                         font=font(F_MONO, 26), fill=DIM + (int(255 * a),), anchor="mm")
 
-        # ---- Phase B: shield draws (4.2 - 10s) ----
+        # ---- Phase B: shield draws (4.2 - 10s), with subtle 3D tilt ----
         if t > 4.2:
             p = ease_in_out(fade(k, int(4.2 * FPS), int(9.5 * FPS)))
-            nseg = int(len(SHIELD) * p)
-            if nseg > 1:
-                glow = int(10 + 14 * math.sin(t * 3) ** 2)
-                # glow pass
-                d.line(SHIELD[:nseg], fill=CYAN + (90,), width=10, joint="curve")
-                d.line(SHIELD[:nseg], fill=(200, 245, 255, 255), width=4, joint="curve")
-            # shield fill pulse once complete
-            if p >= 1.0:
-                pulse = 0.5 + 0.5 * math.sin(t * 2.4)
-                fill_a = int(26 + 20 * pulse)
-                d.polygon(SHIELD, fill=(34, 211, 238, fill_a))
-                # inner check / bolt
-                bw = 90
-                by = 400
-                d.line([(960 - bw, by), (960 - bw * 0.25, by + bw * 0.85)], fill=(220, 250, 255, 230), width=16, joint="curve")
-                d.line([(960 - bw * 0.25, by + bw * 0.85), (960 + bw, by - bw * 0.75)], fill=(220, 250, 255, 230), width=16, joint="curve")
+            if p > 0.01:
+                sl = Image.new("RGBA", img.size, (0, 0, 0, 0))
+                sd = ImageDraw.Draw(sl)
+                nseg = int(len(SHIELD) * p)
+                if nseg > 1:
+                    sd.line(SHIELD[:nseg], fill=CYAN + (90,), width=10, joint="curve")
+                    sd.line(SHIELD[:nseg], fill=(200, 245, 255, 255), width=4, joint="curve")
+                # shield fill pulse once complete
+                if p >= 1.0:
+                    pulse = 0.5 + 0.5 * math.sin(t * 2.4)
+                    fill_a = int(26 + 20 * pulse)
+                    sd.polygon(SHIELD, fill=(34, 211, 238, fill_a))
+                    # inner check / bolt
+                    bw = 90
+                    by = 400
+                    sd.line([(960 - bw, by), (960 - bw * 0.25, by + bw * 0.85)], fill=(220, 250, 255, 230), width=16, joint="curve")
+                    sd.line([(960 - bw * 0.25, by + bw * 0.85), (960 + bw, by - bw * 0.75)], fill=(220, 250, 255, 230), width=16, joint="curve")
+                # 3D tilt around shield center
+                sl = tilt_3d(sl, t, 960, 400, speed=0.7, squeeze_amp=0.06, skew_amp=0.04)
+                img.alpha_composite(sl)
+                d = ImageDraw.Draw(img)
 
         # ---- Phase C: logo reveal (9.8s - end) ----
         if t > 9.8:
@@ -123,7 +128,6 @@ def main():
 
         arr = np.array(img.convert("RGB"))
         arr = light_sweep(arr, t, period=9.0, strength=0.10 if t > 9.8 else 0.05)
-        arr = vignette(arr)
         proc.stdin.write(arr.tobytes())
         if k % 120 == 0:
             print(f"s1 frame {k}/{N}", flush=True)

@@ -37,29 +37,32 @@ def main():
     for k in range(N):
         t = k / FPS
         parts.step()
-        # slow push-in feel: scale gradient wobble with t
-        base = gradient_bg(wobble=0.8, t=t * 1.2)
-        img = Image.fromarray(base, "RGB").convert("RGBA")
+        arr0 = cinematic_bg(t, seed=99)
+        img = Image.fromarray(arr0, "RGB").convert("RGBA")
         d = ImageDraw.Draw(img)
         parts.draw(d, t, alpha=80)
 
-        # shield emblem (fades in, gentle glow pulse)
+        # shield emblem (fades in, gentle glow pulse, subtle 3D tilt)
         sp = ease_out_cubic(fade(k, 0, 36))
         if sp > 0.01:
             pulse = 0.5 + 0.5 * math.sin(t * 2.2)
-            gl = Image.new("RGBA", img.size, (0, 0, 0, 0))
-            gd = ImageDraw.Draw(gl)
-            gd.line(SHIELD, fill=CYAN + (int(120 * sp),), width=8, joint="curve")
-            img.alpha_composite(gl.filter(ImageFilter.GaussianBlur(18)))
-            d = ImageDraw.Draw(img)
-            d.line(SHIELD, fill=(210, 245, 255, int(255 * sp)), width=3, joint="curve")
-            d.polygon(SHIELD, fill=(34, 211, 238, int((20 + 16 * pulse) * sp)))
+            sl = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            sd = ImageDraw.Draw(sl)
+            sd.line(SHIELD, fill=CYAN + (int(120 * sp),), width=8, joint="curve")
+            sl_blur = sl.filter(ImageFilter.GaussianBlur(18))
+            sd = ImageDraw.Draw(sl)
+            sd.line(SHIELD, fill=(210, 245, 255, int(255 * sp)), width=3, joint="curve")
+            sd.polygon(SHIELD, fill=(34, 211, 238, int((20 + 16 * pulse) * sp)))
             # bolt
             bw = 55
-            d.line([(960 - bw, 330), (960 - bw * 0.25, 330 + bw * 0.85)],
+            sd.line([(960 - bw, 330), (960 - bw * 0.25, 330 + bw * 0.85)],
                    fill=(225, 250, 255, int(235 * sp)), width=10, joint="curve")
-            d.line([(960 - bw * 0.25, 330 + bw * 0.85), (960 + bw, 330 - bw * 0.75)],
+            sd.line([(960 - bw * 0.25, 330 + bw * 0.85), (960 + bw, 330 - bw * 0.75)],
                    fill=(225, 250, 255, int(235 * sp)), width=10, joint="curve")
+            sl.alpha_composite(sl_blur)
+            sl = tilt_3d(sl, t, 960, 330, speed=0.6, squeeze_amp=0.05, skew_amp=0.035)
+            img.alpha_composite(sl)
+            d = ImageDraw.Draw(img)
 
         # VAULTRY
         lp = ease_out_cubic(fade(k, 18, 54))
@@ -85,7 +88,6 @@ def main():
 
         arr = np.array(img.convert("RGB"))
         arr = light_sweep(arr, t, period=7.0, strength=0.12)
-        arr = vignette(arr)
         proc.stdin.write(arr.tobytes())
         if k % 120 == 0:
             print(f"s7 frame {k}/{N}", flush=True)
