@@ -20,6 +20,8 @@ swap, not just displayed.
 🔗 **VAULTRY security contract (NEAR testnet):** `vaultguard.vgdeployer.testnet`
 🌐 **Live demo:** https://vaultry.vercel.app
 
+> **My other NEAR hackathon entry:** [PATCHPAY](https://github.com/rjrajput-web3/patchpay) — GitHub bounty escrow on NEAR with TEE-verified PR merges. Independent project, separate submission.
+
 ## What VAULTRY does that others don't
 
 1. **Route Guardian (the core)** — every quote is scored 0–100 from live data before signing:
